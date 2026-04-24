@@ -6,23 +6,20 @@ export async function POST(req: NextRequest) {
   try {
     const { model, system_prompt, user_message } = await req.json();
 
-    // @ts-ignore
-    const result = await tasks.triggerAndWait("llm-node", {
-      payload: {
-        nodeId: "test-llm",
-        workflowRunId: "test",
-        model: model || "llama-3.1-8b-instant",
-        system_prompt: system_prompt || "You are a helpful assistant.",
-        user_message: user_message || "Say hello in one sentence.",
-      },
-      timeout: { durationInMs: 60_000 },
-    });
+    // @ts-ignore — tasks.triggerAndPoll is the correct method for API routes
+    const run = await tasks.triggerAndPoll("llm-node", {
+      nodeId: "test-llm",
+      workflowRunId: "test",
+      model: model || "llama-3.1-8b-instant",
+      system_prompt: system_prompt || "You are a helpful assistant.",
+      user_message: user_message || "Say hello in one sentence.",
+    }, { pollIntervalMs: 500 });
 
     const elapsed = Date.now() - start;
     return NextResponse.json({
-      success: result.ok,
-      output: result.ok ? result.output : null,
-      error: result.ok ? null : result.error,
+      success: run.status === "COMPLETED",
+      output: run.output || null,
+      status: run.status,
       durationMs: elapsed,
       timestamp: new Date().toISOString(),
     });

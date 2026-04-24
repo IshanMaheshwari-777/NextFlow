@@ -79,26 +79,32 @@ function resolveInputs(node: AppNode, edges: AppEdge[], outputs: Map<string, Rec
 async function triggerPolled(taskId: string, payload: any): Promise<any> {
   const start = Date.now();
   try {
-    // @ts-ignore — tasks.triggerAndWait typing is loose
-    const result = await tasks.triggerAndWait(taskId, { payload, timeout: { durationInMs: 300_000 } });
+    // tasks.triggerAndPoll is the correct method for Next.js API routes
+    // (triggerAndWait only works INSIDE another Trigger.dev task)
+    // @ts-ignore — tasks.triggerAndPoll typing is loose
+    const run = await tasks.triggerAndPoll(taskId, payload, { pollIntervalMs: 500 });
     const elapsed = Date.now() - start;
-    console.log(`[triggerPolled] ${taskId} completed in ${elapsed}ms`);
-    if (result.ok) return { ok: true, output: result.output };
-    return { ok: false, error: result.error || "TASK_FAILED" };
+    console.log(`[triggerPolled] ${taskId} completed in ${elapsed}ms, status: ${run.status}`);
+    if (run.status === "COMPLETED") {
+      return { ok: true, output: run.output };
+    }
+    return { ok: false, error: run.status || "TASK_FAILED" };
   } catch (err: any) {
     const elapsed = Date.now() - start;
-    console.error(`[triggerPolled] ${taskId} failed after ${elapsed}ms:`, err?.message);
-    // Fallback to polling if triggerAndWait is not available
+    console.error(`[triggerPolled] ${taskId} error after ${elapsed}ms:`, err?.message);
+    // Fallback to manual trigger + poll
     return triggerPolledFallback(taskId, payload);
   }
 }
 
 async function triggerPolledFallback(taskId: string, payload: any): Promise<any> {
+  console.log(`[triggerPolledFallback] Starting fallback for ${taskId}`);
   // @ts-ignore
   const handle = await tasks.trigger(taskId, payload);
+  console.log(`[triggerPolledFallback] ${taskId} triggered, handle: ${handle.id}`);
   const maxWait = 300_000;
   const start = Date.now();
-  let delay = 300; // Start at 300ms
+  let delay = 500;
   while (Date.now() - start < maxWait) {
     const r = await runs.retrieve(handle.id);
     if (r.status === "COMPLETED") {
@@ -106,10 +112,11 @@ async function triggerPolledFallback(taskId: string, payload: any): Promise<any>
       return { ok: true, output: r.output };
     }
     if (["FAILED", "CANCELED", "SYSTEM_FAILURE", "CRASHED", "TIMED_OUT"].includes(r.status)) {
+      console.error(`[triggerPolledFallback] ${taskId} failed with status: ${r.status}`);
       return { ok: false, error: r.status };
     }
     await new Promise(res => setTimeout(res, delay));
-    delay = Math.min(delay * 1.5, 3000); // Exponential backoff: 300 → 450 → 675 → 1012 → 1518 → 2277 → 3000
+    delay = Math.min(delay * 1.5, 3000);
   }
   return { ok: false, error: "POLLING_TIMEOUT" };
 }

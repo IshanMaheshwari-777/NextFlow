@@ -10,26 +10,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "imageUrl is required" }, { status: 400 });
     }
 
-    // Test crop with center 50% crop
-    // @ts-ignore
-    const result = await tasks.triggerAndWait("crop-image-node", {
-      payload: {
-        nodeId: "test-image",
-        workflowRunId: "test",
-        imageUrl,
-        x_percent: 10,
-        y_percent: 10,
-        width_percent: 80,
-        height_percent: 80,
-      },
-      timeout: { durationInMs: 60_000 },
-    });
+    // @ts-ignore — tasks.triggerAndPoll is the correct method for API routes
+    const run = await tasks.triggerAndPoll("crop-image-node", {
+      nodeId: "test-image",
+      workflowRunId: "test",
+      imageUrl,
+      x_percent: 10,
+      y_percent: 10,
+      width_percent: 80,
+      height_percent: 80,
+    }, { pollIntervalMs: 500 });
 
     const elapsed = Date.now() - start;
     return NextResponse.json({
-      success: result.ok,
-      output: result.ok ? result.output : null,
-      error: result.ok ? null : result.error,
+      success: run.status === "COMPLETED",
+      output: run.output || null,
+      status: run.status,
       durationMs: elapsed,
       timestamp: new Date().toISOString(),
     });

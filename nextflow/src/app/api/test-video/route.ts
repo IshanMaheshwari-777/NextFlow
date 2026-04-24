@@ -10,22 +10,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "videoUrl is required" }, { status: 400 });
     }
 
-    // @ts-ignore
-    const result = await tasks.triggerAndWait("extract-frame-node", {
-      payload: {
-        nodeId: "test-video",
-        workflowRunId: "test",
-        video_url: videoUrl,
-        timestamp: timestamp ?? 0,
-      },
-      timeout: { durationInMs: 120_000 },
-    });
+    // @ts-ignore — tasks.triggerAndPoll is the correct method for API routes
+    const run = await tasks.triggerAndPoll("extract-frame-node", {
+      nodeId: "test-video",
+      workflowRunId: "test",
+      video_url: videoUrl,
+      timestamp: timestamp ?? 0,
+    }, { pollIntervalMs: 500 });
 
     const elapsed = Date.now() - start;
     return NextResponse.json({
-      success: result.ok,
-      output: result.ok ? result.output : null,
-      error: result.ok ? null : result.error,
+      success: run.status === "COMPLETED",
+      output: run.output || null,
+      status: run.status,
       durationMs: elapsed,
       timestamp: new Date().toISOString(),
     });
