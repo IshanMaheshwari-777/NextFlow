@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  
   let userId: string | null = null;
   try {
     const authResult = await auth();
