@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { Transloadit } from "transloadit";
 import { Readable } from "node:stream";
 
+export const dynamic = "force-dynamic";
+
 // Allow up to 60s for video uploads
 export const maxDuration = 60;
 

@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import { prisma, withRetry } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // Increase serverless function timeout (Vercel: free=60s, pro=300s)
 export const maxDuration = 60;
 

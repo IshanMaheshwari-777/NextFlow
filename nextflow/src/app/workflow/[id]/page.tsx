@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { prisma, withRetry } from "@/lib/prisma";
 import WorkflowEditor from "@/components/canvas/WorkflowEditor"
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkflowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let userId: string | null = null;

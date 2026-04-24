@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma, withRetry } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   let userId: string | null = null;
   try {
