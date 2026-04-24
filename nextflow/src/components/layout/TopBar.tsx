@@ -34,7 +34,19 @@ export default function TopBar({ allWorkflows }: Props) {
     setIsRightOpen(true);
     const runStart = performance.now();
     try {
-      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes, edges, runMode: "full" }) });
+      // Strip base64 fileData from nodes before sending — files are pre-uploaded as URLs
+      // This prevents exceeding Vercel's 4.5MB request body limit
+      const cleanNodes = nodes.map(n => ({
+        ...n,
+        data: { ...n.data, fileData: undefined, previewUrl: undefined },
+      }));
+      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes: cleanNodes, edges, runMode: "full" }) });
+      // Handle non-JSON error responses gracefully
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "Unknown error");
+        console.error(`[frontend] API error ${res.status}:`, errText);
+        throw new Error(`Workflow run failed (${res.status})`);
+      }
       const data = await res.json();
       const elapsed = Math.round(performance.now() - runStart);
       console.log(`[frontend] Workflow run completed in ${elapsed}ms`, data.duration ? `(server: ${data.duration}ms)` : "");
@@ -45,7 +57,16 @@ export default function TopBar({ allWorkflows }: Props) {
       }
       const runsRes = await fetch(`/api/workflow/${workflowId}/runs`);
       if (runsRes.ok) { const { runs } = await runsRes.json(); useWorkflowStore.getState().setRunHistory(runs); }
-    } catch (e) { console.error(e); } finally { setIsRunning(false); }
+    } catch (e: any) {
+      console.error("[frontend] Run error:", e?.message || e);
+      // Mark all still-running nodes as failed
+      for (const node of nodes) {
+        const nd = node.data as any;
+        if (nd.isRunning) {
+          store.setNodeResult(node.id, "failed", undefined, e?.message || "Workflow run failed");
+        }
+      }
+    } finally { setIsRunning(false); }
   };
 
   const handleExport = () => {

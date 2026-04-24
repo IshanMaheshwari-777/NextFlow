@@ -3,6 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import { prisma, withRetry } from "@/lib/prisma";
 
+// Increase serverless function timeout (Vercel: free=60s, pro=300s)
+export const maxDuration = 60;
+
 // Simple in-memory LLM cache — avoids re-calling Groq for identical inputs
 const LLM_CACHE = new Map<string, { output: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -126,7 +129,13 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
   switch (node.type) {
     case "text": return { output: inputs.text || "" };
     case "upload-image": {
-      if (!inputs.fileData && !inputs.fileUrl) throw new Error("No image provided");
+      // If already pre-uploaded to CDN (new flow), just return the URL
+      if (inputs.fileUrl && typeof inputs.fileUrl === "string" && inputs.fileUrl.startsWith("http")) {
+        console.log(`[upload-image] Using pre-uploaded URL: ${inputs.fileUrl.slice(0, 60)}...`);
+        return { output: inputs.fileUrl, imageUrl: inputs.fileUrl, thumbnailUrl: inputs.thumbnailUrl };
+      }
+      // Legacy: upload via Trigger.dev task (local dev or fileData still present)
+      if (!inputs.fileData) throw new Error("No image provided. Please upload a file first.");
       const r = await triggerPolled("upload-image-node", { ...base, fileData: inputs.fileData, fileUrl: inputs.fileUrl, fileName: inputs.fileName || "image.jpg", mimeType: inputs.mimeType || "image/jpeg" });
       if (!r.ok) throw new Error(`Upload image failed: ${r.error}`);
       const o = r.output as any;
@@ -134,7 +143,13 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       return { output: o.imageUrl, imageUrl: o.imageUrl, thumbnailUrl: o.thumbnailUrl };
     }
     case "upload-video": {
-      if (!inputs.fileData && !inputs.fileUrl) throw new Error("No video provided");
+      // If already pre-uploaded to CDN (new flow), just return the URL
+      if (inputs.fileUrl && typeof inputs.fileUrl === "string" && inputs.fileUrl.startsWith("http")) {
+        console.log(`[upload-video] Using pre-uploaded URL: ${inputs.fileUrl.slice(0, 60)}...`);
+        return { output: inputs.fileUrl, videoUrl: inputs.fileUrl, thumbnailUrl: inputs.thumbnailUrl };
+      }
+      // Legacy: upload via Trigger.dev task
+      if (!inputs.fileData) throw new Error("No video provided. Please upload a file first.");
       const r = await triggerPolled("upload-video-node", { ...base, fileData: inputs.fileData, fileUrl: inputs.fileUrl, fileName: inputs.fileName || "video.mp4", mimeType: inputs.mimeType || "video/mp4" });
       if (!r.ok) throw new Error(`Upload video failed: ${r.error}`);
       const o = r.output as any;
