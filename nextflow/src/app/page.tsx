@@ -41,6 +41,7 @@ export default async function HomePage() {
 
     redirect(`/workflow/${(workflow as any).id}`);
   } catch (error: any) {
+    if (error?.message === "NEXT_REDIRECT" || error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("[HomePage] Database error:", error);
     return (
       <div style={{ padding: "2rem", color: "#e4e4ed", textAlign: "center", maxWidth: "800px", margin: "0 auto" }}>

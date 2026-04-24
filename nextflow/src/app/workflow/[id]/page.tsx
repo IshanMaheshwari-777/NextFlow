@@ -59,6 +59,7 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
       />
     );
   } catch (error: any) {
+    if (error?.message === "NEXT_NOT_FOUND" || error?.digest?.startsWith("NEXT_NOT_FOUND")) throw error;
     console.error("[WorkflowPage] Database error:", error);
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a0a0f", color: "#e4e4ed", padding: "2rem" }}>
