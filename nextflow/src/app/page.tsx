@@ -38,12 +38,18 @@ export default async function HomePage() {
     }
 
     redirect(`/workflow/${(workflow as any).id}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error("[HomePage] Database error:", error);
     return (
-      <div style={{ padding: "2rem", color: "#e4e4ed", textAlign: "center" }}>
+      <div style={{ padding: "2rem", color: "#e4e4ed", textAlign: "center", maxWidth: "800px", margin: "0 auto" }}>
         <h2>Something went wrong loading your workspace.</h2>
-        <p style={{ color: "#8b8b9e" }}>We encountered a database connection issue. Please try again.</p>
+        <p style={{ color: "#8b8b9e", marginBottom: "1rem" }}>We encountered a database connection issue. Please try again.</p>
+        <div style={{ background: "#1c1c28", padding: "1rem", borderRadius: "8px", textAlign: "left", fontFamily: "monospace", fontSize: "0.85rem", overflowX: "auto" }}>
+          <strong style={{ color: "#f87171" }}>Error Details:</strong>
+          <pre style={{ margin: "0.5rem 0 0 0", whiteSpace: "pre-wrap", color: "#fca5a5" }}>
+            {error?.message || error?.toString() || "Unknown error"}
+          </pre>
+        </div>
       </div>
     );
   }

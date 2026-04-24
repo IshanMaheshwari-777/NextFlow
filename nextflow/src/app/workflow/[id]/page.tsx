@@ -56,12 +56,18 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
         allWorkflows={safeAllWorkflows}
       />
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[WorkflowPage] Database error:", error);
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a0a0f", color: "#e4e4ed" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a0a0f", color: "#e4e4ed", padding: "2rem" }}>
         <h2>Unable to load workflow</h2>
         <p style={{ color: "#8b8b9e", marginBottom: "20px" }}>We encountered an error connecting to the database.</p>
+        <div style={{ background: "#1c1c28", padding: "1rem", borderRadius: "8px", textAlign: "left", fontFamily: "monospace", fontSize: "0.85rem", overflowX: "auto", maxWidth: "800px", width: "100%", marginBottom: "20px" }}>
+          <strong style={{ color: "#f87171" }}>Error Details:</strong>
+          <pre style={{ margin: "0.5rem 0 0 0", whiteSpace: "pre-wrap", color: "#fca5a5" }}>
+            {error?.message || error?.toString() || "Unknown error"}
+          </pre>
+        </div>
         <button onClick={() => {}} style={{ padding: "8px 16px", background: "#8b5cf6", color: "white", borderRadius: "8px", border: "none" }}>Try Again</button>
       </div>
     );
