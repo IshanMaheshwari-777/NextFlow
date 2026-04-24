@@ -19,7 +19,7 @@ export default async function HomePage() {
     await withRetry(() =>
       prisma.user.upsert({
         where: { id: userId as string },
-        create: { id: userId as string, email: "user@example.com" },
+        create: { id: userId as string, email: `${userId}@example.com` },
         update: {},
       })
     );
