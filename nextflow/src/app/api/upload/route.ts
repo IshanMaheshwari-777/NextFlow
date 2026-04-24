@@ -3,10 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { Transloadit } from "transloadit";
 import { Readable } from "node:stream";
 
-// Route-level config: allow large uploads (up to 25MB)
-export const config = {
-  api: { bodyParser: { sizeLimit: "25mb" } },
-};
+// Allow up to 60s for video uploads
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -31,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Build assembly steps based on file type
     const steps: Record<string, any> = isVideo
       ? {
-          stored: { robot: "/file/serve", use: ":original" },
+          stored: { robot: "/video/encode", use: ":original", preset: "empty", ffmpeg_stack: "v6.0.0" },
           thumbnail: { robot: "/video/thumbs", use: ":original", count: 1, ffmpeg_stack: "v6.0.0" },
         }
       : {
