@@ -40,7 +40,7 @@ export default function WorkflowCanvas() {
     <div ref={wrapperRef} className="w-full h-full relative" onDragOver={onDragOver} onDrop={onDrop}>
       {/* Empty state */}
       {nodes.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-[1]">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-[1]">
           <div className="w-14 h-14 rounded-2xl bg-[#7C5CFF]/[0.06] border border-dashed border-[#7C5CFF]/20 flex items-center justify-center mb-4">
             <Workflow className="w-6 h-6 text-[#7C5CFF]/50" />
           </div>
@@ -59,7 +59,8 @@ export default function WorkflowCanvas() {
         onConnect={(c: Connection) => onConnect(c)}
         onInit={i => { rfRef.current = i; }}
         deleteKeyCode={["Delete", "Backspace"]}
-        fitView fitViewOptions={{ padding: 0.3 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        fitView fitViewOptions={{ padding: 0.3, maxZoom: 0.8 }}
         minZoom={0.1} maxZoom={3}
         defaultEdgeOptions={defaultEdgeOptions}
         proOptions={{ hideAttribution: true }}

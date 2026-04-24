@@ -1,5 +1,5 @@
 "use client";
-import { memo, ReactNode } from "react";
+import { memo, ReactNode, useEffect, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_HANDLES, NodeType, HandleType } from "@/types";
@@ -13,6 +13,15 @@ type Props = { id: string; type: NodeType; label: string; accentColor: string; i
 export default memo(function BaseNode({ id, type, label, accentColor, icon, isRunning, runStatus, children, selected }: Props) {
   const { deleteNode } = useWorkflowStore();
   const handles = NODE_HANDLES[type];
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (isRunning) {
+      const interval = setInterval(() => setTick((t) => t + 1), 500);
+      return () => clearInterval(interval);
+    }
+  }, [isRunning]);
+
   return (
     <div
       className={cn(

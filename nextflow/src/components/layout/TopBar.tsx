@@ -1,6 +1,8 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { UserButton } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
+import Link from "next/link";
 import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useRouter } from "next/navigation";
@@ -22,6 +24,36 @@ export default function TopBar({ allWorkflows }: Props) {
     const timer = setTimeout(() => { setSaveStatus("saved"); setTimeout(() => setSaveStatus("idle"), 2000); }, 2500);
     return () => clearTimeout(timer);
   }, [nodes, edges, workflowName]);
+
+  // Polling mechanism during workflow run
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout;
+    if (isRunning && workflowId) {
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/workflow/${workflowId}/runs`);
+          if (res.ok) {
+            const { runs } = await res.json();
+            useWorkflowStore.getState().setRunHistory(runs);
+            
+            // Update node visual state based on the active run's nodeRuns
+            const activeRun = runs[0];
+            if (activeRun && activeRun.status === "running" && activeRun.nodeRuns) {
+              const store = useWorkflowStore.getState();
+              for (const nr of activeRun.nodeRuns) {
+                store.updateNodeData(nr.nodeId, { runStatus: nr.status });
+              }
+            }
+          }
+        } catch (e) {
+          console.error("[frontend] Polling error:", e);
+        }
+      }, 2000);
+    }
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [isRunning, workflowId]);
 
   const handleRun = async () => {
     if (isRunning || !workflowId || nodes.length === 0) return;
@@ -89,7 +121,12 @@ export default function TopBar({ allWorkflows }: Props) {
       {/* Left */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Link 
+          href="/dashboard" 
+          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textDecoration: "none", transition: "opacity 150ms ease" }} 
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.8"} 
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+        >
           <div style={{
             width: 32, height: 32, borderRadius: 8,
             background: "linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)",
@@ -99,7 +136,7 @@ export default function TopBar({ allWorkflows }: Props) {
             <Zap style={{ width: 16, height: 16, color: "#fff", fill: "#fff" }} />
           </div>
           <span style={{ color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>NextFlow</span>
-        </div>
+        </Link>
 
         <div style={{ width: 1, height: 24, background: "#1c1c28" }} />
 
@@ -227,7 +264,7 @@ export default function TopBar({ allWorkflows }: Props) {
             transition: "all 150ms ease",
           }}
         >
-          {isRunning ? <><Loader2 style={{ width: 14, height: 14, color: "#a78bfa", animation: "spin 1s linear infinite" }} />Running...</> : <><Play style={{ width: 14, height: 14, fill: "#fff" }} />Run Workflow</>}
+          {isRunning ? <><Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "#a78bfa" }} />Running...</> : <><Play style={{ width: 14, height: 14, fill: "#fff" }} />Run Workflow</>}
         </button>
 
         {!isRightOpen && (
@@ -246,7 +283,22 @@ export default function TopBar({ allWorkflows }: Props) {
         )}
 
         <div style={{ marginLeft: 8 }}>
-          <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} />
+          <UserButton appearance={{ 
+            baseTheme: dark, 
+            variables: {
+              colorBackground: "#12121a",
+              colorInputBackground: "#0c0c12",
+              colorText: "#e4e4ed",
+              colorTextSecondary: "#8b8b9e",
+              colorPrimary: "#8b5cf6",
+              colorDanger: "#f87171",
+            },
+            elements: { 
+              userButtonAvatarBox: "w-8 h-8", 
+              userButtonPopoverCard: "bg-[#12121a] border border-[#1c1c28]", 
+              userPreviewSecondaryIdentifier: "text-[#8b8b9e]" 
+            } 
+          }} />
         </div>
       </div>
     </div>

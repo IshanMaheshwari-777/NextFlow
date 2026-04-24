@@ -100,6 +100,13 @@ body {
 .fade-in { animation: fadeIn 0.15s ease; }
 .zoom-in-95 { animation: fadeIn 0.15s ease; }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite !important;
+}
+
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -152,3 +159,62 @@ select.node-input {
 .cl-card { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.6) !important; }
 .cl-formFieldInput, .cl-phoneNumberInput__input { background: var(--input-bg) !important; border-color: var(--border) !important; color: var(--text) !important; border-radius: 6px !important; }
 .cl-formFieldInput:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 4px var(--accent-glow) !important; }
+
+/* Clerk Modals & Text Overrides */
+
+/* Force Clerk CSS Variables */
+:root, .cl-rootBox, .cl-modalBackdrop, .cl-modalContent, .cl-userButtonPopoverCard, .cl-userProfile, .cl-profilePage {
+  --cl-colorText: #e4e4ed !important;
+  --cl-colorTextSecondary: #8b8b9e !important;
+  --cl-colorBackground: #12121a !important;
+  --cl-colorInputBackground: #0c0c12 !important;
+  --cl-colorInputText: #e4e4ed !important;
+  --cl-colorPrimary: #8b5cf6 !important;
+}
+
+.cl-modalContent, .cl-userProfile, .cl-profilePage, .cl-scrollBox, .cl-userButtonPopoverCard {
+  background: var(--surface) !important;
+}
+
+/* Aggressive Text Overrides */
+.cl-modalContent *, .cl-userButtonPopoverCard * {
+  color: var(--text);
+}
+
+/* Restore Secondary Colors */
+.cl-modalContent .cl-userPreviewSecondaryIdentifier,
+.cl-modalContent .cl-profileSectionSubtitle,
+.cl-modalContent .cl-profileSectionSubtitle p,
+.cl-modalContent .cl-breadcrumbsItemDivider,
+.cl-userButtonPopoverCard .cl-userPreviewSecondaryIdentifier,
+.cl-navbarButton {
+  color: var(--text-secondary) !important;
+}
+
+/* Restore Primary Colors */
+.cl-navbarButton[data-active="true"] {
+  color: var(--accent) !important;
+  background: var(--accent-glow) !important;
+}
+.cl-navbarButton:hover {
+  color: var(--text) !important;
+  background: var(--surface-hover) !important;
+}
+.cl-badge {
+  background: var(--accent-glow) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent-border) !important;
+}
+.cl-profileSectionPrimaryButton, .cl-footerActionLink {
+  color: var(--accent) !important;
+}
+.cl-pageScrollBox {
+  background: transparent !important;
+}
+.cl-button {
+  color: var(--text) !important;
+}
+.cl-button[data-variant="solid"] {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
