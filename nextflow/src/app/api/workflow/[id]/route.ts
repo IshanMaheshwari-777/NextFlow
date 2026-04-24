@@ -4,7 +4,13 @@ import { prisma, withRetry } from "@/lib/prisma";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.error("[API/Workflow/ID PATCH] Clerk auth error:", error);
+  }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any;
@@ -23,7 +29,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.error("[API/Workflow/ID DELETE] Clerk auth error:", error);
+  }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await withRetry(() => prisma.workflow.deleteMany({ where: { id, userId } }));
   return NextResponse.json({ success: true });

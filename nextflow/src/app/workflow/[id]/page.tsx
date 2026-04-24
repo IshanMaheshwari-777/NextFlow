@@ -5,7 +5,14 @@ import WorkflowEditor from "@/components/canvas/WorkflowEditor"
 
 export default async function WorkflowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.error("[WorkflowPage] Clerk auth error:", error);
+  }
+
   if (!userId) redirect("/sign-in");
 
   const workflow = await withRetry(() =>

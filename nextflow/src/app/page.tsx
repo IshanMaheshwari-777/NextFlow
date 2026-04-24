@@ -3,7 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma, withRetry } from "@/lib/prisma";
 
 export default async function HomePage() {
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.error("[HomePage] Clerk auth error:", error);
+  }
+
   if (!userId) redirect("/sign-in");
 
   await withRetry(() =>

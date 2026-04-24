@@ -7,7 +7,13 @@ import { Readable } from "node:stream";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.error("[API/Upload] Clerk auth error:", error);
+  }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const start = Date.now();
