@@ -41,11 +41,13 @@ export const extractFrameTask = task({
     const assembly = await client.createAssembly({ params: { steps: { imported: { robot: "/http/import" as const, url: video_url }, frame: thumbStep as any } } });
     const start = Date.now();
     let done: any;
+    let delay = 500;
     while (Date.now() - start < 120000) {
       const s = await client.getAssembly(assembly.assembly_id as string);
       if (s.ok === "ASSEMBLY_COMPLETED") { done = s; break; }
       if (s.error || s.ok === "ASSEMBLY_ABORTED") throw new Error(`Extract frame failed: ${s.error}`);
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, delay));
+      delay = Math.min(delay * 1.5, 4000);
     }
     if (!done) throw new Error("Extract frame timed out");
     const file = (done.results?.frame || [])[0];

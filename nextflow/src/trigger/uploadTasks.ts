@@ -11,11 +11,16 @@ function getClient() {
 
 async function waitForAssembly(client: any, assemblyId: string, maxMs = 120000): Promise<any> {
   const start = Date.now();
+  let delay = 500; // Start at 500ms instead of fixed 2000ms
   while (Date.now() - start < maxMs) {
     const s = await client.getAssembly(assemblyId);
-    if (s.ok === "ASSEMBLY_COMPLETED") return s;
+    if (s.ok === "ASSEMBLY_COMPLETED") {
+      logger.info("Assembly completed", { assemblyId, elapsed: Date.now() - start });
+      return s;
+    }
     if (s.error || s.ok === "ASSEMBLY_ABORTED") throw new Error(`Assembly failed: ${s.error}`);
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, delay));
+    delay = Math.min(delay * 1.5, 4000); // 500 → 750 → 1125 → 1687 → 2531 → 3796 → 4000
   }
   throw new Error("Assembly timed out");
 }

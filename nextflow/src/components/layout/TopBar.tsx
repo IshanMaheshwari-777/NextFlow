@@ -26,15 +26,23 @@ export default function TopBar({ allWorkflows }: Props) {
   const handleRun = async () => {
     if (isRunning || !workflowId || nodes.length === 0) return;
     setIsRunning(true); resetNodeStates();
+    // Immediately mark all nodes as running for visual feedback
+    const store = useWorkflowStore.getState();
+    for (const node of nodes) {
+      store.updateNodeData(node.id, { isRunning: true, runStatus: "running" });
+    }
+    setIsRightOpen(true);
+    const runStart = performance.now();
     try {
       const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes, edges, runMode: "full" }) });
       const data = await res.json();
+      const elapsed = Math.round(performance.now() - runStart);
+      console.log(`[frontend] Workflow run completed in ${elapsed}ms`, data.duration ? `(server: ${data.duration}ms)` : "");
       if (data.nodeResults) {
         for (const [nodeId, result] of Object.entries(data.nodeResults as Record<string, any>)) {
           setNodeResult(nodeId, result.status, result.output, result.error);
         }
       }
-      setIsRightOpen(true);
       const runsRes = await fetch(`/api/workflow/${workflowId}/runs`);
       if (runsRes.ok) { const { runs } = await runsRes.json(); useWorkflowStore.getState().setRunHistory(runs); }
     } catch (e) { console.error(e); } finally { setIsRunning(false); }

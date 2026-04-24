@@ -71,11 +71,13 @@ export const cropImageTask = task({
     });
     const start = Date.now();
     let done: any;
+    let delay = 500;
     while (Date.now() - start < 60000) {
       const s = await client.getAssembly(assembly.assembly_id as string);
       if (s.ok === "ASSEMBLY_COMPLETED") { done = s; break; }
       if (s.error || s.ok === "ASSEMBLY_ABORTED") throw new Error(`Crop failed: ${s.error}`);
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, delay));
+      delay = Math.min(delay * 1.5, 4000);
     }
     if (!done) throw new Error("Crop timed out");
     const file = (done.results?.cropped || [])[0];

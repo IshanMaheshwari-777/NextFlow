@@ -42,14 +42,16 @@ export const llmTask = task({
       messages.push({ role: "user", content: user_message });
     }
 
+    const apiStart = Date.now();
     const response = await groq.chat.completions.create({
       model: resolvedModel,
       messages,
       max_tokens: 4096,
     });
+    const apiTime = Date.now() - apiStart;
 
     const text = response.choices?.[0]?.message?.content || "";
-    logger.info("LLM done", { nodeId, length: text.length });
-    return { nodeId, success: true, text, model: resolvedModel };
+    logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: resolvedModel });
+    return { nodeId, success: true, text, model: resolvedModel, _timing: { apiMs: apiTime } };
   },
 });

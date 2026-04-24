@@ -3,6 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import { prisma, withRetry } from "@/lib/prisma";
 
+// Simple in-memory LLM cache — avoids re-calling Groq for identical inputs
+const LLM_CACHE = new Map<string, { output: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX = 100;
+function llmCacheKey(model: string, systemPrompt: string | undefined, userMessage: string, images?: string[]): string {
+  return JSON.stringify({ m: model, s: systemPrompt || "", u: userMessage, i: images || [] });
+}
+
 type AppNode = { id: string; type: string; position: { x: number; y: number }; data: Record<string, any> };
 type AppEdge = { id: string; source: string; sourceHandle: string; target: string; targetHandle: string };
 
@@ -69,15 +77,39 @@ function resolveInputs(node: AppNode, edges: AppEdge[], outputs: Map<string, Rec
 }
 
 async function triggerPolled(taskId: string, payload: any): Promise<any> {
-  // @ts-ignore — tasks.trigger typing is loose
-  const handle = await tasks.trigger(taskId, payload);
-  const maxWait = 300_000; // 5 minutes
   const start = Date.now();
+  try {
+    // @ts-ignore — tasks.triggerAndWait typing is loose
+    const result = await tasks.triggerAndWait(taskId, { payload, timeout: { durationInMs: 300_000 } });
+    const elapsed = Date.now() - start;
+    console.log(`[triggerPolled] ${taskId} completed in ${elapsed}ms`);
+    if (result.ok) return { ok: true, output: result.output };
+    return { ok: false, error: result.error || "TASK_FAILED" };
+  } catch (err: any) {
+    const elapsed = Date.now() - start;
+    console.error(`[triggerPolled] ${taskId} failed after ${elapsed}ms:`, err?.message);
+    // Fallback to polling if triggerAndWait is not available
+    return triggerPolledFallback(taskId, payload);
+  }
+}
+
+async function triggerPolledFallback(taskId: string, payload: any): Promise<any> {
+  // @ts-ignore
+  const handle = await tasks.trigger(taskId, payload);
+  const maxWait = 300_000;
+  const start = Date.now();
+  let delay = 300; // Start at 300ms
   while (Date.now() - start < maxWait) {
     const r = await runs.retrieve(handle.id);
-    if (r.status === "COMPLETED") return { ok: true, output: r.output };
-    if (r.status === "FAILED" || r.status === "CANCELED" || r.status === "SYSTEM_FAILURE" || r.status === "CRASHED" || r.status === "TIMED_OUT") return { ok: false, error: r.status };
-    await new Promise(res => setTimeout(res, 1500));
+    if (r.status === "COMPLETED") {
+      console.log(`[triggerPolledFallback] ${taskId} completed in ${Date.now() - start}ms`);
+      return { ok: true, output: r.output };
+    }
+    if (["FAILED", "CANCELED", "SYSTEM_FAILURE", "CRASHED", "TIMED_OUT"].includes(r.status)) {
+      return { ok: false, error: r.status };
+    }
+    await new Promise(res => setTimeout(res, delay));
+    delay = Math.min(delay * 1.5, 3000); // Exponential backoff: 300 → 450 → 675 → 1012 → 1518 → 2277 → 3000
   }
   return { ok: false, error: "POLLING_TIMEOUT" };
 }
@@ -106,10 +138,22 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       const images = inputs.images ? (Array.isArray(inputs.images) ? inputs.images : [inputs.images]) : undefined;
       const userMsg = inputs.user_message || inputs.output;
       const finalMsg = userMsg && typeof userMsg === "string" && userMsg.trim().length > 0 ? userMsg : "Hello";
-      const r = await triggerPolled("llm-node", { ...base, model: inputs.model || "llama-3.3-70b-versatile", system_prompt: inputs.system_prompt, user_message: finalMsg, images });
+      const model = inputs.model || "llama-3.3-70b-versatile";
+      // Check cache
+      const cKey = llmCacheKey(model, inputs.system_prompt, finalMsg, images);
+      const cached = LLM_CACHE.get(cKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log(`[cache] LLM cache HIT for ${node.id}`);
+        return cached.output;
+      }
+      const r = await triggerPolled("llm-node", { ...base, model, system_prompt: inputs.system_prompt, user_message: finalMsg, images });
       if (!r.ok) throw new Error(`LLM failed: ${r.error}`);
       const o = r.output as any;
-      return { output: o?.text || "", text: o?.text || "" };
+      const result = { output: o?.text || "", text: o?.text || "" };
+      // Store in cache
+      if (LLM_CACHE.size >= CACHE_MAX) { const firstKey = LLM_CACHE.keys().next().value; if (firstKey) LLM_CACHE.delete(firstKey); }
+      LLM_CACHE.set(cKey, { output: result, timestamp: Date.now() });
+      return result;
     }
     case "crop-image": {
       const imageUrl = inputs.imageUrl || inputs.image_url || inputs.output;
@@ -170,28 +214,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let overallStatus: "success" | "failed" | "partial" = "success";
 
   for (const layer of layers) {
+    const layerStart = Date.now();
     await Promise.allSettled(layer.map(async (node) => {
       const nodeStart = Date.now();
       const nodeRun = await withRetry(() => prisma.nodeRun.create({ data: { workflowRunId: run.id, nodeId: node.id, nodeType: node.type, nodeLabel: node.data?.label, status: "running", startedAt: new Date() } }));
       try {
         const inputs = resolveInputs(node, edges || [], nodeOutputs);
         const output = await executeNode(node, inputs, run.id);
+        const nodeDuration = Date.now() - nodeStart;
+        console.log(`[perf] Node ${node.id} (${node.type}) completed in ${nodeDuration}ms`);
         nodeOutputs.set(node.id, output);
-        nodeResults[node.id] = { status: "success", output };
-        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "success", output: output as any, duration: Date.now() - nodeStart, completedAt: new Date() } }));
+        nodeResults[node.id] = { status: "success", output, duration: nodeDuration };
+        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "success", output: output as any, duration: nodeDuration, completedAt: new Date() } }));
       } catch (err: any) {
-        console.error(`[Node ${node.id}] Execution failed:`, err?.message || err);
+        const nodeDuration = Date.now() - nodeStart;
+        console.error(`[perf] Node ${node.id} (${node.type}) FAILED in ${nodeDuration}ms:`, err?.message || err);
         overallStatus = "partial";
-        nodeResults[node.id] = { status: "failed", error: err?.message || "Unknown error" };
-        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "failed", error: err?.message || "Unknown error", duration: Date.now() - nodeStart, completedAt: new Date() } }));
+        nodeResults[node.id] = { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration };
+        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration, completedAt: new Date() } }));
       }
     }));
+    console.log(`[perf] Layer completed in ${Date.now() - layerStart}ms (${layer.length} nodes)`);
   }
 
+  const totalDuration = Date.now() - startTime;
   const statuses = Object.values(nodeResults).map((r: any) => r.status);
   if (statuses.every(s => s === "failed")) overallStatus = "failed";
   if (statuses.every(s => s === "success")) overallStatus = "success";
 
-  await withRetry(() => prisma.workflowRun.update({ where: { id: run.id }, data: { status: overallStatus, completedAt: new Date(), duration: Date.now() - startTime } }));
-  return NextResponse.json({ runId: run.id, status: overallStatus, nodeResults });
+  console.log(`[perf] Total workflow run completed in ${totalDuration}ms — ${statuses.filter(s => s === "success").length}/${statuses.length} nodes succeeded`);
+  await withRetry(() => prisma.workflowRun.update({ where: { id: run.id }, data: { status: overallStatus, completedAt: new Date(), duration: totalDuration } }));
+  return NextResponse.json({ runId: run.id, status: overallStatus, nodeResults, duration: totalDuration });
 }
