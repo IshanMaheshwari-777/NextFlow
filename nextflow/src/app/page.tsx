@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { prisma, withRetry } from "@/lib/prisma";
-
+export const dynamic = "force-dynamic";
 export default async function HomePage() {
   let userId: string | null = null;
   try {
@@ -11,7 +11,9 @@ export default async function HomePage() {
     console.error("[HomePage] Clerk auth error:", error);
   }
 
-  if (!userId) redirect("/sign-in");
+  if (!userId) {
+  return redirect("/sign-in");
+}
 
   try {
     await withRetry(() =>
