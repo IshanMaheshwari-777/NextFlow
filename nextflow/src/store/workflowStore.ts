@@ -21,6 +21,11 @@ type State = {
   isRunning: boolean; currentRunId: string | null;
   runHistory: WorkflowRunRecord[]; selectedRunId: string | null;
   isLeftOpen: boolean; isRightOpen: boolean;
+  past: Array<{ nodes: AppNode[]; edges: AppEdge[] }>;
+  future: Array<{ nodes: AppNode[]; edges: AppEdge[] }>;
+  saveSnapshot: () => void;
+  undo: () => void;
+  redo: () => void;
   setWorkflowId: (id: string) => void;
   setWorkflowName: (name: string) => void;
   setNodes: (nodes: AppNode[]) => void;
@@ -51,13 +56,55 @@ export const useWorkflowStore = create<State>()((set, get) => ({
   isRunning: false, currentRunId: null,
   runHistory: [], selectedRunId: null,
   isLeftOpen: true, isRightOpen: true,
+  past: [], future: [],
+
+  saveSnapshot: () => {
+    const { nodes, edges, past } = get();
+    // Deep clone to prevent reference mutations
+    const snapshot = { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) };
+    set({ past: [...past.slice(-49), snapshot], future: [] });
+  },
+
+  undo: () => {
+    const { past, future, nodes, edges } = get();
+    if (past.length === 0) return;
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, -1);
+    set({
+      past: newPast,
+      future: [{ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }, ...future],
+      nodes: previous.nodes,
+      edges: previous.edges,
+    });
+  },
+
+  redo: () => {
+    const { past, future, nodes, edges } = get();
+    if (future.length === 0) return;
+    const next = future[0];
+    const newFuture = future.slice(1);
+    set({
+      past: [...past, { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }],
+      future: newFuture,
+      nodes: next.nodes,
+      edges: next.edges,
+    });
+  },
 
   setWorkflowId: (id) => set({ workflowId: id }),
   setWorkflowName: (name) => set({ workflowName: name }),
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
-  onNodesChange: (changes) => set(state => ({ nodes: applyNodeChanges(changes, state.nodes) as AppNode[] })),
-  onEdgesChange: (changes) => set(state => ({ edges: applyEdgeChanges(changes, state.edges) as AppEdge[] })),
+  onNodesChange: (changes) => {
+    const shouldSnapshot = changes.some(c => c.type === "remove" || c.type === "add" || (c.type === "position" && c.dragging === false));
+    if (shouldSnapshot) get().saveSnapshot();
+    set(state => ({ nodes: applyNodeChanges(changes, state.nodes) as AppNode[] }));
+  },
+  onEdgesChange: (changes) => {
+    const shouldSnapshot = changes.some(c => c.type === "remove" || c.type === "add");
+    if (shouldSnapshot) get().saveSnapshot();
+    set(state => ({ edges: applyEdgeChanges(changes, state.edges) as AppEdge[] }));
+  },
 
   onConnect: (connection) => {
     const { nodes, edges } = get();
@@ -83,6 +130,7 @@ export const useWorkflowStore = create<State>()((set, get) => ({
       target: connection.target!, targetHandle: connection.targetHandle!,
       animated: true, style: { stroke: colors[srcHandle.type] || "#94a3b8", strokeWidth: 2 },
     };
+    get().saveSnapshot();
     set(state => ({
       edges: addEdge(newEdge, state.edges) as AppEdge[],
       nodes: state.nodes.map(n => n.id === connection.target ? { ...n, data: { ...n.data, connectedInputs: [...(n.data.connectedInputs || []), connection.targetHandle!] } } : n),
@@ -91,12 +139,16 @@ export const useWorkflowStore = create<State>()((set, get) => ({
   },
 
   addNode: (type, position) => {
+    get().saveSnapshot();
     const id = `${type}-${uuid().slice(0, 8)}`;
     const node: AppNode = { id, type, position: position || { x: 200 + Math.random() * 200, y: 100 + Math.random() * 150 }, data: { ...defaultData(type), runStatus: "idle", connectedInputs: [] } };
     set(state => ({ nodes: [...state.nodes, node] }));
   },
 
-  deleteNode: (id) => set(state => ({ nodes: state.nodes.filter(n => n.id !== id), edges: state.edges.filter(e => e.source !== id && e.target !== id) })),
+  deleteNode: (id) => {
+    get().saveSnapshot();
+    set(state => ({ nodes: state.nodes.filter(n => n.id !== id), edges: state.edges.filter(e => e.source !== id && e.target !== id) }));
+  },
 
   updateNodeData: (nodeId, data) => set(state => ({ nodes: state.nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n) })),
 
@@ -106,7 +158,7 @@ export const useWorkflowStore = create<State>()((set, get) => ({
 
   resetNodeStates: () => set(state => ({ nodes: state.nodes.map(n => ({ ...n, data: { ...n.data, isRunning: false, runStatus: "idle", runOutput: undefined, runError: undefined, result: undefined } })) })),
 
-  loadWorkflow: ({ id, name, nodes, edges }) => set({ workflowId: id, workflowName: name, nodes, edges }),
+  loadWorkflow: ({ id, name, nodes, edges }) => set({ workflowId: id, workflowName: name, nodes, edges, past: [], future: [] }),
   exportAsJSON: () => { const { workflowId, workflowName, nodes, edges } = get(); return JSON.stringify({ id: workflowId, name: workflowName, nodes, edges }, null, 2); },
   importFromJSON: (json) => { try { const p = JSON.parse(json); set({ workflowId: p.id || null, workflowName: p.name || "Imported", nodes: p.nodes || [], edges: p.edges || [] }); } catch {} },
   setRunHistory: (runs) => set({ runHistory: runs }),

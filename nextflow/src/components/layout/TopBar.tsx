@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Link from "next/link";
-import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History } from "lucide-react";
+import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History, Undo2, Redo2 } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useRouter } from "next/navigation";
 
@@ -12,13 +12,36 @@ type Props = {
 };
 
 export default function TopBar({ allWorkflows }: Props) {
-  const { workflowId, workflowName, nodes, edges, isRunning, isRightOpen, setWorkflowName, exportAsJSON, importFromJSON, resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen } = useWorkflowStore();
+  const { workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, setWorkflowName, exportAsJSON, importFromJSON, resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, undo, redo } = useWorkflowStore();
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(workflowName);
   const [showWf, setShowWf] = useState(false);
+  const [showRunMenu, setShowRunMenu] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "idle">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleRun("full");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    
+    const handleRunSingle = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { nodeId } = customEvent.detail;
+      handleRun("single", [nodeId]);
+    };
+    window.addEventListener("run-single-node", handleRunSingle);
+    
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("run-single-node", handleRunSingle);
+    };
+  }, [isRunning, workflowId, nodes, edges]);
 
   useEffect(() => {
     const timer = setTimeout(() => { setSaveStatus("saved"); setTimeout(() => setSaveStatus("idle"), 2000); }, 2500);
@@ -55,24 +78,36 @@ export default function TopBar({ allWorkflows }: Props) {
     };
   }, [isRunning, workflowId]);
 
-  const handleRun = async () => {
+  const handleRun = async (mode: "full" | "selected" | "single" = "full", overrideNodeIds?: string[]) => {
     if (isRunning || !workflowId || nodes.length === 0) return;
+    setShowRunMenu(false);
+
+    let targetNodes = nodes;
+    let selectedNodeIds = overrideNodeIds || [];
+    
+    if (mode === "selected") {
+      selectedNodeIds = nodes.filter((n: any) => n.selected).map(n => n.id);
+      if (selectedNodeIds.length === 0) return;
+      targetNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
+    } else if (mode === "single" && overrideNodeIds) {
+      targetNodes = nodes.filter(n => overrideNodeIds.includes(n.id));
+    }
+
     setIsRunning(true); resetNodeStates();
-    // Immediately mark all nodes as running for visual feedback
+    // Immediately mark target nodes as running for visual feedback
     const store = useWorkflowStore.getState();
-    for (const node of nodes) {
+    for (const node of targetNodes) {
       store.updateNodeData(node.id, { isRunning: true, runStatus: "running" });
     }
     setIsRightOpen(true);
     const runStart = performance.now();
     try {
-      // Strip base64 fileData from nodes before sending — files are pre-uploaded as URLs
-      // This prevents exceeding Vercel's 4.5MB request body limit
+      // Strip base64 fileData from nodes before sending
       const cleanNodes = nodes.map(n => ({
         ...n,
         data: { ...n.data, fileData: undefined, previewUrl: undefined },
       }));
-      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes: cleanNodes, edges, runMode: "full" }) });
+      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes: cleanNodes, edges, runMode: mode, selectedNodeIds }) });
       // Handle non-JSON error responses gracefully
       if (!res.ok) {
         const errText = await res.text().catch(() => "Unknown error");
@@ -247,25 +282,107 @@ export default function TopBar({ allWorkflows }: Props) {
           <Upload style={{ width: 16, height: 16 }} />
         </button>
 
+        <button type="button" onClick={undo} disabled={past.length === 0} style={{
+          width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+          color: past.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, 
+          cursor: past.length === 0 ? "not-allowed" : "pointer",
+          opacity: past.length === 0 ? 0.3 : 1,
+        }}
+        onMouseEnter={e => { if (past.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
+        onMouseLeave={e => { if (past.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
+        title="Undo (Cmd+Z)">
+          <Undo2 style={{ width: 16, height: 16 }} />
+        </button>
+
+        <button type="button" onClick={redo} disabled={future.length === 0} style={{
+          width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+          color: future.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, 
+          cursor: future.length === 0 ? "not-allowed" : "pointer",
+          opacity: future.length === 0 ? 0.3 : 1,
+        }}
+        onMouseEnter={e => { if (future.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
+        onMouseLeave={e => { if (future.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
+        title="Redo (Cmd+Shift+Z)">
+          <Redo2 style={{ width: 16, height: 16 }} />
+        </button>
+
         <div style={{ width: 1, height: 28, background: "#1c1c28", margin: "0 8px" }} />
 
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={isRunning || nodes.length === 0}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 20px", fontSize: 14, fontWeight: 600,
-            color: "#fff", background: isRunning ? "#16161f" : "#12121a",
-            border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8,
-            cursor: isRunning || nodes.length === 0 ? "not-allowed" : "pointer",
-            opacity: nodes.length === 0 ? 0.4 : 1,
-            boxShadow: isRunning ? "none" : "0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.03)",
-            transition: "all 150ms ease",
-          }}
-        >
-          {isRunning ? <><Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "#a78bfa" }} />Running...</> : <><Play style={{ width: 14, height: 14, fill: "#fff" }} />Run Workflow</>}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => handleRun("full")}
+            disabled={isRunning || nodes.length === 0}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 16px", fontSize: 14, fontWeight: 600,
+              color: "#fff", background: isRunning ? "#16161f" : "#12121a",
+              border: "1px solid rgba(139,92,246,0.3)", borderRight: "none",
+              borderRadius: "8px 0 0 8px",
+              cursor: isRunning || nodes.length === 0 ? "not-allowed" : "pointer",
+              opacity: nodes.length === 0 ? 0.4 : 1,
+              boxShadow: isRunning ? "none" : "0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.03)",
+              transition: "all 150ms ease",
+            }}
+          >
+            {isRunning ? <><Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "#a78bfa" }} />Running...</> : <><Play style={{ width: 14, height: 14, fill: "#fff" }} />Run</>}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setShowRunMenu(!showRunMenu)}
+            disabled={isRunning || nodes.length === 0}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "8px", height: "37px",
+              color: "#fff", background: isRunning ? "#16161f" : "#12121a",
+              border: "1px solid rgba(139,92,246,0.3)", borderLeft: "1px solid rgba(139,92,246,0.15)",
+              borderRadius: "0 8px 8px 0",
+              cursor: isRunning || nodes.length === 0 ? "not-allowed" : "pointer",
+              opacity: nodes.length === 0 ? 0.4 : 1,
+              boxShadow: isRunning ? "none" : "0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.03)",
+            }}
+          >
+            <ChevronDown style={{ width: 14, height: 14 }} />
+          </button>
+
+          {showRunMenu && (
+            <div style={{
+              position: "absolute", top: 44, right: 0, zIndex: 300, minWidth: 200,
+              background: "#111", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: 4
+            }}>
+              <button
+                onClick={() => handleRun("full")}
+                style={{
+                  width: "100%", textAlign: "left", padding: "8px 14px", fontSize: 12,
+                  background: "transparent", color: "#ccc", border: "none", borderRadius: 4, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "space-between"
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span>▶ Run Full Workflow</span>
+                <span style={{ opacity: 0.5, fontSize: 10 }}>⌘Enter</span>
+              </button>
+              
+              <button
+                onClick={() => handleRun("selected")}
+                disabled={nodes.filter((n: any) => n.selected).length === 0}
+                style={{
+                  width: "100%", textAlign: "left", padding: "8px 14px", fontSize: 12,
+                  background: "transparent", color: nodes.filter((n: any) => n.selected).length === 0 ? "#555" : "#ccc", 
+                  border: "none", borderRadius: 4, 
+                  cursor: nodes.filter((n: any) => n.selected).length === 0 ? "not-allowed" : "pointer"
+                }}
+                onMouseEnter={e => { if (nodes.filter((n: any) => n.selected).length > 0) e.currentTarget.style.background = "#1a1a1a"; }}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                ▶ Run Selected Nodes
+              </button>
+            </div>
+          )}
+        </div>
 
         {!isRightOpen && (
           <button

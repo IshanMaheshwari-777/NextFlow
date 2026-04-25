@@ -233,7 +233,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   let activeNodes: AppNode[] = nodes;
-  if (runMode === "selected" && selectedNodeIds.length > 0) activeNodes = nodes.filter((n: AppNode) => selectedNodeIds.includes(n.id));
+  if ((runMode === "selected" || runMode === "single") && selectedNodeIds.length > 0) {
+    activeNodes = nodes.filter((n: AppNode) => selectedNodeIds.includes(n.id));
+  }
 
   const run = await withRetry(() => prisma.workflowRun.create({ data: { workflowId: id, userId, status: "running", runMode, selectedNodeIds, startedAt: new Date() } }));
 

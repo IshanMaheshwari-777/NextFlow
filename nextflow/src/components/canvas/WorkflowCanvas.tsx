@@ -1,10 +1,10 @@
 "use client";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { ReactFlow, Background, BackgroundVariant, MiniMap, Controls, type Connection, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { NodeType, AppNode, AppEdge } from "@/types";
-import { Workflow, Keyboard } from "lucide-react";
+import { Workflow, Keyboard, Play, Trash2 } from "lucide-react";
 import TextNode from "@/components/nodes/TextNode";
 import UploadImageNode from "@/components/nodes/UploadImageNode";
 import UploadVideoNode from "@/components/nodes/UploadVideoNode";
@@ -21,9 +21,34 @@ const defaultEdgeOptions = {
 };
 
 export default function WorkflowCanvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } = useWorkflowStore();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, deleteNode } = useWorkflowStore();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const rfRef = useRef<ReactFlowInstance<AppNode, AppEdge> | null>(null);
+
+  const [ctxMenu, setCtxMenu] = useState<{ id: string, top: number, left: number } | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setCtxMenu(null);
+    const handleGlobalEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setCtxMenu(null); };
+    window.addEventListener("click", handleGlobalClick);
+    window.addEventListener("keydown", handleGlobalEsc);
+    return () => {
+      window.removeEventListener("click", handleGlobalClick);
+      window.removeEventListener("keydown", handleGlobalEsc);
+    };
+  }, []);
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: AppNode) => {
+      event.preventDefault();
+      setCtxMenu({
+        id: node.id,
+        top: event.clientY,
+        left: event.clientX,
+      });
+    },
+    [setCtxMenu]
+  );
 
   const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }, []);
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -57,6 +82,7 @@ export default function WorkflowCanvas() {
         nodes={nodes} edges={edges} nodeTypes={nodeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
         onConnect={(c: Connection) => onConnect(c)}
+        onNodeContextMenu={onNodeContextMenu}
         onInit={i => { rfRef.current = i; }}
         deleteKeyCode={["Delete", "Backspace"]}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
@@ -74,6 +100,55 @@ export default function WorkflowCanvas() {
           nodeColor={n => ({ text: "#6366f1", "upload-image": "#34D399", "upload-video": "#FBBF24", llm: "#7C5CFF", "crop-image": "#ef4444", "extract-frame": "#ec4899" } as any)[n.type || ""] || "#4E5264"}
         />
       </ReactFlow>
+
+      {ctxMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: ctxMenu.top,
+            left: ctxMenu.left,
+            zIndex: 9999,
+            background: "#111",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 8,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            padding: 4,
+            minWidth: 150,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("run-single-node", { detail: { nodeId: ctxMenu.id } }));
+              setCtxMenu(null);
+            }}
+            style={{
+              width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13,
+              background: "transparent", color: "#ccc", border: "none", borderRadius: 4, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 8
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+          >
+            <Play style={{ width: 14, height: 14 }} /> Run this node
+          </button>
+          <button
+            onClick={() => {
+              deleteNode(ctxMenu.id);
+              setCtxMenu(null);
+            }}
+            style={{
+              width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13,
+              background: "transparent", color: "#f87171", border: "none", borderRadius: 4, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 8
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+          >
+            <Trash2 style={{ width: 14, height: 14 }} /> Delete node
+          </button>
+        </div>
+      )}
     </div>
   );
 }

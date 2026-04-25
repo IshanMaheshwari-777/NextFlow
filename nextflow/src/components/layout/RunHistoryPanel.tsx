@@ -111,8 +111,12 @@ export default function RunHistoryPanel({ open, onClose }: Props) {
                 </div>
               </div>
               <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="text-[9px] text-[#4E5264] bg-white/[0.03] rounded px-1.5 py-0.5 border border-white/[0.06]">{run.runMode}</span>
-                <span className="text-[9px] text-[#4E5264]">{run.nodeRuns?.length || 0} nodes</span>
+                <span className="text-[9px] text-[#4E5264] bg-white/[0.03] rounded px-1.5 py-0.5 border border-white/[0.06]">
+                  {run.runMode === "selected" ? `selected (${run.selectedNodeIds?.length || 0} nodes)` : run.runMode}
+                </span>
+                {run.runMode !== "selected" && (
+                  <span className="text-[9px] text-[#4E5264]">{run.nodeRuns?.length || 0} nodes</span>
+                )}
                 <ChevronRight className="w-3 h-3 text-[#4E5264] ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </button>

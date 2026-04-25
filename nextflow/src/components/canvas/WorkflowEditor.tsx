@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
-  const { loadWorkflow, setRunHistory, nodes, edges, workflowName, workflowId } = useWorkflowStore();
+  const { loadWorkflow, setRunHistory, nodes, edges, workflowName, workflowId, undo, redo } = useWorkflowStore();
   const saveRef = useRef<NodeJS.Timeout | null>(null);
   // Context-menu node picker (right-click only)
   const [showCtxPicker, setShowCtxPicker] = useState(false);
@@ -25,6 +25,26 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
     loadWorkflow({ id: workflow.id, name: workflow.name, nodes: workflow.nodes, edges: workflow.edges });
     setRunHistory(workflow.workflowRuns);
   }, [workflow.id]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [undo, redo]);
 
   const save = useCallback(async () => {
     if (!workflowId) return;

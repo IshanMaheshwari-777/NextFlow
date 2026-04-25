@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma, withRetry } from "@/lib/prisma";
 import DashboardClient from "./DashboardClient";
+import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sampleWorkflow";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +26,27 @@ export default async function DashboardPage() {
     })
   );
 
-  const allWorkflows = await withRetry(() =>
+  let allWorkflows = await withRetry(() =>
     prisma.workflow.findMany({
       where: { userId: userId as string },
       orderBy: { updatedAt: "desc" },
       select: { id: true, name: true, updatedAt: true, nodes: true },
     })
   );
+
+  if (allWorkflows.length === 0) {
+    const sampleWorkflow = await withRetry(() =>
+      prisma.workflow.create({
+        data: {
+          userId: userId as string,
+          name: "Product Launch Kit Generator",
+          nodes: SAMPLE_NODES as any,
+          edges: SAMPLE_EDGES as any,
+        },
+      })
+    );
+    allWorkflows = [{ id: sampleWorkflow.id, name: sampleWorkflow.name, updatedAt: sampleWorkflow.updatedAt, nodes: sampleWorkflow.nodes as any }];
+  }
 
   const recentRuns = await withRetry(() =>
     prisma.workflowRun.findMany({

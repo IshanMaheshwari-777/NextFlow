@@ -150,6 +150,52 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
                 <span style={{ fontSize: 15, fontWeight: 600 }}>{isCreating ? "Creating..." : "New Workflow"}</span>
               </button>
 
+              {/* Load Sample Card */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsCreating(true);
+                  try {
+                    const res = await fetch("/api/workflow", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ sample: true }),
+                    });
+                    const data = await res.json();
+                    if (data.id) router.push(`/workflow/${data.id}`);
+                  } catch (e) {
+                    console.error(e);
+                    setIsCreating(false);
+                  }
+                }}
+                disabled={isCreating}
+                style={{
+                  height: 240, borderRadius: 12, border: "2px dashed #1c1c28",
+                  background: "transparent", display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: 12, cursor: "pointer",
+                  transition: "all 200ms ease", color: "#8b8b9e"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "rgba(52,211,153,0.5)";
+                  e.currentTarget.style.background = "rgba(52,211,153,0.05)";
+                  e.currentTarget.style.color = "#34d399";
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.3)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = "#1c1c28";
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#8b8b9e";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(52,211,153,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Zap style={{ width: 24, height: 24, color: "#34d399" }} />
+                </div>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>Load Sample Workflow</span>
+              </button>
+
               {/* Workflow Cards */}
               {wfs.map(wf => (
                 <Link key={wf.id} href={`/workflow/${wf.id}`} style={{ textDecoration: "none" }}>
