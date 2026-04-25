@@ -30,7 +30,10 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 - 🎬 **Video Processing** — Upload videos and extract frames at specific timestamps
 - 📝 **Text Nodes** — Input text and pipe it between nodes
 - ⚡ **Background Execution** — Workflows run on Trigger.dev with real-time status tracking
+- 🎯 **Selective Execution** — Run full workflows, single nodes, or execute paths up to a specific node
+- ⏪ **Undo/Redo History** — Robust history stack for all workflow canvas modifications
 - 📊 **Run History** — Full execution history with per-node status, outputs, and timing
+- 🚀 **Sample Workflows** — Includes pre-built templates like the "Product Launch Kit Generator"
 - 🔐 **Authentication** — Clerk-based auth with Google SSO
 - 💾 **Auto-Save** — Workflows save automatically to a Postgres database
 - 🌙 **Dark UI** — Premium dark theme with purple accent design system
@@ -194,21 +197,22 @@ nextflow/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (auth)/             # Sign-in / Sign-up pages
 │   │   ├── api/                # API routes (workflow CRUD, run)
+│   │   ├── dashboard/          # Workflow management dashboard
 │   │   ├── workflow/[id]/      # Workflow editor page
 │   │   ├── layout.tsx          # Root layout (Clerk + theme)
-│   │   ├── page.tsx            # Entry (redirect to workflow)
+│   │   ├── page.tsx            # Landing page / Entry
 │   │   └── globals.css         # Design system tokens
 │   ├── components/
 │   │   ├── canvas/             # WorkflowEditor, WorkflowCanvas
-│   │   ├── layout/             # TopBar, LeftSidebar, RightSidebar
+│   │   ├── layout/             # TopBar, LeftSidebar, RunHistoryPanel
 │   │   └── nodes/              # BaseNode, TextNode, LLMNode, etc.
-│   ├── store/                  # Zustand workflow store
+│   ├── store/                  # Zustand workflow store (undo/redo, etc.)
 │   ├── trigger/                # Trigger.dev task definitions
 │   │   ├── llmTask.ts          # Groq LLM execution
 │   │   ├── uploadTasks.ts      # Image/Video upload to Transloadit
 │   │   ├── cropImageTask.ts    # Image cropping
 │   │   └── extractFrameTask.ts # Video frame extraction
-│   ├── lib/                    # Prisma client, utils
+│   ├── lib/                    # Prisma DB client, utils, sample workflows
 │   └── types/                  # TypeScript types, node definitions
 ├── prisma/
 │   └── schema.prisma           # Database schema
