@@ -115,10 +115,17 @@ body {
 
 /* ─── Node Styles ─── */
 @keyframes nodeGlow {
-  0%,100% { box-shadow: 0 0 0 0 var(--accent-glow), 0 0 12px rgba(139,92,246,0.05); }
-  50% { box-shadow: 0 0 0 3px rgba(139,92,246,0.12), 0 0 24px rgba(139,92,246,0.12); }
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 15px rgba(139, 92, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.8), 0 0 35px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.25);
+  }
 }
-.node-running { animation: nodeGlow 2s ease-in-out infinite; border-color: var(--accent-border) !important; }
+.node-running {
+  animation: nodeGlow 1.5s ease-in-out infinite;
+  border-color: rgba(139, 92, 246, 0.8) !important;
+}
 .node-success { border-left: 3px solid var(--success) !important; }
 .node-failed { border-left: 3px solid var(--error) !important; }
 
@@ -154,6 +161,8 @@ select.node-input {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+
+
 
 /* ─── Clerk ─── */
 .cl-card { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.6) !important; }

@@ -162,7 +162,9 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       const images = inputs.images ? (Array.isArray(inputs.images) ? inputs.images : [inputs.images]) : undefined;
       const userMsg = inputs.user_message || inputs.output;
       const finalMsg = userMsg && typeof userMsg === "string" && userMsg.trim().length > 0 ? userMsg : "Hello";
-      const model = inputs.model || "llama-3.3-70b-versatile";
+      const hasImages = images && images.length > 0;
+      const baseModel = inputs.model || "llama-3.3-70b-versatile";
+      const model = hasImages ? "meta-llama/llama-4-scout-17b-16e-instruct" : baseModel;
       // Check cache
       const cKey = llmCacheKey(model, inputs.system_prompt, finalMsg, images);
       const cached = LLM_CACHE.get(cKey);

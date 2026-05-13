@@ -1,12 +1,9 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import Groq from "groq-sdk";
 
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
-
 const GROQ_MODELS: Record<string, string> = {
   "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant": "llama-3.1-8b-instant",
-  // Allow any model string to pass through
 };
 
 export const llmTask = task({
@@ -17,48 +14,60 @@ export const llmTask = task({
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-    // Auto-switch to Scout vision model when images are connected
     const hasImages = images && images.length > 0;
-    const resolvedModel = hasImages
-      ? VISION_MODEL
-      : (GROQ_MODELS[model] || model || "llama-3.1-8b-instant");
+    const selectedModel = GROQ_MODELS[model] || model || "llama-3.1-8b-instant";
+    const finalModel = hasImages
+      ? "meta-llama/llama-4-scout-17b-16e-instruct"
+      : selectedModel;
 
-    logger.info("LLM task started", { nodeId, model: resolvedModel, hasImages, imageCount: images.length });
+    logger.info("LLM task started", { nodeId, model: finalModel, hasImages, imageCount: images.length });
 
-    const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [];
+    let messages: any[] = [];
+    const systemPrompt = system_prompt;
+    const userPrompt = user_message || "Describe this image in detail.";
 
-    if (system_prompt && system_prompt.trim().length > 0) {
-      messages.push({ role: "system", content: system_prompt });
+    if (systemPrompt && systemPrompt.trim().length > 0) {
+      messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
     }
 
-    // Build user message content
     if (hasImages) {
-      // Multimodal: send images + text using Groq's OpenAI-compatible format
-      const contentParts: Groq.Chat.Completions.ChatCompletionContentPartImage[] = images.map(url => ({
-        type: "image_url" as const,
-        image_url: { url },
-      }));
       messages.push({
         role: "user",
         content: [
-          ...contentParts,
-          { type: "text" as const, text: user_message || "Describe this image in detail." },
+          ...images.map(url => ({
+            type: "image_url",
+            image_url: { url },
+          })),
+          {
+            type: "text",
+            text: userPrompt,
+          },
         ],
       });
     } else {
-      messages.push({ role: "user", content: user_message });
+      messages.push({
+        role: "user",
+        content: userPrompt,
+      });
     }
+
+    // REQUIRED DEBUGGING
+    console.log("FINAL MODEL:", finalModel);
+    console.log(JSON.stringify(messages, null, 2));
 
     const apiStart = Date.now();
     const response = await groq.chat.completions.create({
-      model: resolvedModel,
+      model: finalModel,
       messages,
       max_tokens: 4096,
     });
     const apiTime = Date.now() - apiStart;
 
     const text = response.choices?.[0]?.message?.content || "";
-    logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: resolvedModel });
-    return { nodeId, success: true, text, model: resolvedModel, _timing: { apiMs: apiTime } };
+    logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: finalModel });
+    return { nodeId, success: true, text, model: finalModel, _timing: { apiMs: apiTime } };
   },
 });
