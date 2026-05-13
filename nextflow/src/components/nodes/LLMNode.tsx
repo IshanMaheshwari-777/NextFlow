@@ -301,6 +301,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
       icon={<Sparkles className="w-3.5 h-3.5" />}
       isRunning={d.isRunning}
       runStatus={d.runStatus}
+      runError={d.runError}
       selected={selected}
     >
       {/* MODEL */}
@@ -361,12 +362,12 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         />
       </div>
 
-      {/* IMAGE CONNECTED */}
+      {/* IMAGE CONNECTED — auto-switches to Scout */}
       {connected.includes("images") && (
         <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span className="text-[10px] text-emerald-400">
-            Image input connected
+            Image input connected — auto-uses Scout vision
           </span>
         </div>
       )}

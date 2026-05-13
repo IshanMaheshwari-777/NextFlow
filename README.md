@@ -237,11 +237,7 @@ nextflow/
 
 ---
 
-## License
 
-MIT
-
----
 
 <div align="center">
   <p><strong>Built by <a href="https://github.com/IshanMaheshwari-777">Ishan Maheshwari</a></strong></p>

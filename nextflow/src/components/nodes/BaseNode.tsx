@@ -3,14 +3,14 @@ import { memo, ReactNode, useEffect, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_HANDLES, NodeType, HandleType } from "@/types";
-import { Loader2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 
 const HANDLE_COLORS: Record<HandleType, string> = { text: "#818cf8", image: "#34D399", video: "#FBBF24", any: "#8B8FA3" };
 
-type Props = { id: string; type: NodeType; label: string; accentColor: string; icon: ReactNode; isRunning?: boolean; runStatus?: string; children: ReactNode; selected?: boolean };
+type Props = { id: string; type: NodeType; label: string; accentColor: string; icon: ReactNode; isRunning?: boolean; runStatus?: string; runError?: string; children: ReactNode; selected?: boolean };
 
-export default memo(function BaseNode({ id, type, label, accentColor, icon, isRunning, runStatus, children, selected }: Props) {
+export default memo(function BaseNode({ id, type, label, accentColor, icon, isRunning, runStatus, runError, children, selected }: Props) {
   const { deleteNode } = useWorkflowStore();
   const handles = NODE_HANDLES[type];
   const [tick, setTick] = useState(0);
@@ -85,7 +85,16 @@ export default memo(function BaseNode({ id, type, label, accentColor, icon, isRu
       </div>
 
       {/* Body */}
-      <div style={{ padding: "10px 12px", fontSize: 12 }}>{children}</div>
+      <div style={{ padding: "10px 12px", fontSize: 12 }}>
+        {children}
+        {/* Show error message on node body when runStatus is "failed" */}
+        {!isRunning && runStatus === "failed" && runError && (
+          <div style={{ marginTop: 8, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "flex-start", gap: 6 }}>
+            <AlertTriangle style={{ width: 12, height: 12, color: "#f87171", flexShrink: 0, marginTop: 1 }} />
+            <p style={{ margin: 0, fontSize: 10, color: "#f87171", lineHeight: 1.5, wordBreak: "break-word" }}>{runError}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 });

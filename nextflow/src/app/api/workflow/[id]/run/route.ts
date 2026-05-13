@@ -237,44 +237,85 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     activeNodes = nodes.filter((n: AppNode) => selectedNodeIds.includes(n.id));
   }
 
-  const run = await withRetry(() => prisma.workflowRun.create({ data: { workflowId: id, userId, status: "running", runMode, selectedNodeIds, startedAt: new Date() } }));
+  // ─── SSE Streaming Response ───
+  // Each node's start/completion is pushed incrementally so the frontend
+  // can update pulsing and results per-node instead of waiting for everything.
 
-  const nodeOutputs = new Map<string, Record<string, any>>();
-  const nodeResults: Record<string, any> = {};
-  const layers = topologicalSort(activeNodes, edges || []);
-  const startTime = Date.now();
-  let overallStatus: "success" | "failed" | "partial" = "success";
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: any) => {
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch { /* client disconnected */ }
+      };
 
-  for (const layer of layers) {
-    const layerStart = Date.now();
-    await Promise.allSettled(layer.map(async (node) => {
-      const nodeStart = Date.now();
-      const nodeRun = await withRetry(() => prisma.nodeRun.create({ data: { workflowRunId: run.id, nodeId: node.id, nodeType: node.type, nodeLabel: node.data?.label, status: "running", startedAt: new Date() } }));
       try {
-        const inputs = resolveInputs(node, edges || [], nodeOutputs);
-        const output = await executeNode(node, inputs, run.id);
-        const nodeDuration = Date.now() - nodeStart;
-        console.log(`[perf] Node ${node.id} (${node.type}) completed in ${nodeDuration}ms`);
-        nodeOutputs.set(node.id, output);
-        nodeResults[node.id] = { status: "success", output, duration: nodeDuration };
-        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "success", output: output as any, duration: nodeDuration, completedAt: new Date() } }));
+        const run = await withRetry(() => prisma.workflowRun.create({ data: { workflowId: id, userId: userId!, status: "running", runMode, selectedNodeIds, startedAt: new Date() } }));
+        send("run-start", { runId: run.id });
+
+        const nodeOutputs = new Map<string, Record<string, any>>();
+        const nodeResults: Record<string, any> = {};
+        const layers = topologicalSort(activeNodes, edges || []);
+        const startTime = Date.now();
+        let overallStatus: "success" | "failed" | "partial" = "success";
+
+        for (const layer of layers) {
+          // Tell frontend which nodes are starting NOW (this layer only)
+          for (const node of layer) {
+            send("node-start", { nodeId: node.id, nodeType: node.type, nodeLabel: node.data?.label });
+          }
+
+          const layerStart = Date.now();
+          await Promise.allSettled(layer.map(async (node) => {
+            const nodeStart = Date.now();
+            const nodeRun = await withRetry(() => prisma.nodeRun.create({ data: { workflowRunId: run.id, nodeId: node.id, nodeType: node.type, nodeLabel: node.data?.label, status: "running", startedAt: new Date() } }));
+            try {
+              const inputs = resolveInputs(node, edges || [], nodeOutputs);
+              const output = await executeNode(node, inputs, run.id);
+              const nodeDuration = Date.now() - nodeStart;
+              console.log(`[perf] Node ${node.id} (${node.type}) completed in ${nodeDuration}ms`);
+              nodeOutputs.set(node.id, output);
+              nodeResults[node.id] = { status: "success", output, duration: nodeDuration };
+              await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "success", output: output as any, duration: nodeDuration, completedAt: new Date() } }));
+              // Push result to frontend immediately
+              send("node-complete", { nodeId: node.id, status: "success", output, duration: nodeDuration });
+            } catch (err: any) {
+              const nodeDuration = Date.now() - nodeStart;
+              console.error(`[perf] Node ${node.id} (${node.type}) FAILED in ${nodeDuration}ms:`, err?.message || err);
+              overallStatus = "partial";
+              nodeResults[node.id] = { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration };
+              await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration, completedAt: new Date() } }));
+              // Push failure to frontend immediately
+              send("node-complete", { nodeId: node.id, status: "failed", error: err?.message || "Unknown error", duration: nodeDuration });
+            }
+          }));
+          console.log(`[perf] Layer completed in ${Date.now() - layerStart}ms (${layer.length} nodes)`);
+        }
+
+        const totalDuration = Date.now() - startTime;
+        const statuses = Object.values(nodeResults).map((r: any) => r.status);
+        if (statuses.every(s => s === "failed")) overallStatus = "failed";
+        if (statuses.every(s => s === "success")) overallStatus = "success";
+
+        console.log(`[perf] Total workflow run completed in ${totalDuration}ms — ${statuses.filter(s => s === "success").length}/${statuses.length} nodes succeeded`);
+        await withRetry(() => prisma.workflowRun.update({ where: { id: run.id }, data: { status: overallStatus, completedAt: new Date(), duration: totalDuration } }));
+        send("workflow-complete", { runId: run.id, status: overallStatus, duration: totalDuration, nodeResults });
       } catch (err: any) {
-        const nodeDuration = Date.now() - nodeStart;
-        console.error(`[perf] Node ${node.id} (${node.type}) FAILED in ${nodeDuration}ms:`, err?.message || err);
-        overallStatus = "partial";
-        nodeResults[node.id] = { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration };
-        await withRetry(() => prisma.nodeRun.update({ where: { id: nodeRun.id }, data: { status: "failed", error: err?.message || "Unknown error", duration: nodeDuration, completedAt: new Date() } }));
+        console.error("[API/Workflow/Run] Stream error:", err?.message || err);
+        send("error", { error: err?.message || "Unknown execution error" });
+      } finally {
+        try { controller.close(); } catch { /* already closed */ }
       }
-    }));
-    console.log(`[perf] Layer completed in ${Date.now() - layerStart}ms (${layer.length} nodes)`);
-  }
+    },
+  });
 
-  const totalDuration = Date.now() - startTime;
-  const statuses = Object.values(nodeResults).map((r: any) => r.status);
-  if (statuses.every(s => s === "failed")) overallStatus = "failed";
-  if (statuses.every(s => s === "success")) overallStatus = "success";
-
-  console.log(`[perf] Total workflow run completed in ${totalDuration}ms — ${statuses.filter(s => s === "success").length}/${statuses.length} nodes succeeded`);
-  await withRetry(() => prisma.workflowRun.update({ where: { id: run.id }, data: { status: overallStatus, completedAt: new Date(), duration: totalDuration } }));
-  return NextResponse.json({ runId: run.id, status: overallStatus, nodeResults, duration: totalDuration });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

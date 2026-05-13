@@ -103,7 +103,12 @@ export default function RightSidebar() {
                       )}
                       {nr.status === "running" && <div style={{ fontSize: 11, color: "#fbbf24", marginTop: 3, fontWeight: 500 }}>Running...</div>}
                       {nr.status === "pending" && <div style={{ fontSize: 11, color: "#2e2e3e", marginTop: 3 }}>Waiting...</div>}
-                      {nr.status === "failed" && nr.error && <div style={{ fontSize: 11, color: "#f87171", marginTop: 3 }}>{nr.error.slice(0, 60)}</div>}
+                      {/* FIX 3: Show error expanded by default for failed nodes */}
+                      {nr.status === "failed" && nr.error && (
+                        <div style={{ fontSize: 11, color: "#f87171", marginTop: 6, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 6, padding: "6px 8px", lineHeight: 1.5, wordBreak: "break-word" }}>
+                          {nr.error}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

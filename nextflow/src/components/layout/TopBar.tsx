@@ -1,9 +1,9 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Link from "next/link";
-import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History, Undo2, Redo2 } from "lucide-react";
+import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History, Undo2, Redo2, AlertTriangle, XCircle } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function TopBar({ allWorkflows }: Props) {
-  const { workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, setWorkflowName, exportAsJSON, importFromJSON, resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, undo, redo } = useWorkflowStore();
+  const { workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, setWorkflowName, exportAsJSON, importFromJSON, resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, updateNodeData, undo, redo } = useWorkflowStore();
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(workflowName);
@@ -20,6 +20,15 @@ export default function TopBar({ allWorkflows }: Props) {
   const [showRunMenu, setShowRunMenu] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "idle">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // FIX 3: Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: "error" | "warning" } | null>(null);
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null);
+  const showToast = useCallback((message: string, type: "error" | "warning") => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    setToast({ message, type });
+    toastTimeout.current = setTimeout(() => setToast(null), 4000);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,7 +57,8 @@ export default function TopBar({ allWorkflows }: Props) {
     return () => clearTimeout(timer);
   }, [nodes, edges, workflowName]);
 
-  // Polling mechanism during workflow run
+  // Polling mechanism during workflow run — only for run history, NOT node states
+  // Node states are driven by SSE events from the run API
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
     if (isRunning && workflowId) {
@@ -58,15 +68,6 @@ export default function TopBar({ allWorkflows }: Props) {
           if (res.ok) {
             const { runs } = await res.json();
             useWorkflowStore.getState().setRunHistory(runs);
-            
-            // Update node visual state based on the active run's nodeRuns
-            const activeRun = runs[0];
-            if (activeRun && activeRun.status === "running" && activeRun.nodeRuns) {
-              const store = useWorkflowStore.getState();
-              for (const nr of activeRun.nodeRuns) {
-                store.updateNodeData(nr.nodeId, { runStatus: nr.status });
-              }
-            }
           }
         } catch (e) {
           console.error("[frontend] Polling error:", e);
@@ -82,23 +83,17 @@ export default function TopBar({ allWorkflows }: Props) {
     if (isRunning || !workflowId || nodes.length === 0) return;
     setShowRunMenu(false);
 
-    let targetNodes = nodes;
     let selectedNodeIds = overrideNodeIds || [];
     
     if (mode === "selected") {
       selectedNodeIds = nodes.filter((n: any) => n.selected).map(n => n.id);
       if (selectedNodeIds.length === 0) return;
-      targetNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
-    } else if (mode === "single" && overrideNodeIds) {
-      targetNodes = nodes.filter(n => overrideNodeIds.includes(n.id));
     }
 
-    setIsRunning(true); resetNodeStates();
-    // Immediately mark target nodes as running for visual feedback
-    const store = useWorkflowStore.getState();
-    for (const node of targetNodes) {
-      store.updateNodeData(node.id, { isRunning: true, runStatus: "running" });
-    }
+    // Reset all node states — do NOT set any node to isRunning here.
+    // The SSE stream will tell us exactly which nodes are executing.
+    resetNodeStates();
+    setIsRunning(true);
     setIsRightOpen(true);
     const runStart = performance.now();
     try {
@@ -114,20 +109,93 @@ export default function TopBar({ allWorkflows }: Props) {
         console.error(`[frontend] API error ${res.status}:`, errText);
         throw new Error(`Workflow run failed (${res.status})`);
       }
-      const data = await res.json();
-      const elapsed = Math.round(performance.now() - runStart);
-      console.log(`[frontend] Workflow run completed in ${elapsed}ms`, data.duration ? `(server: ${data.duration}ms)` : "");
-      if (data.nodeResults) {
-        for (const [nodeId, result] of Object.entries(data.nodeResults as Record<string, any>)) {
-          setNodeResult(nodeId, result.status, result.output, result.error);
+
+      const contentType = res.headers.get("content-type") || "";
+      
+      if (contentType.includes("text/event-stream") && res.body) {
+        // ─── SSE Streaming: update each node incrementally ───
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || ""; // keep incomplete event in buffer
+
+          for (const part of parts) {
+            if (!part.trim()) continue;
+            const lines = part.split("\n");
+            let eventType = "";
+            let dataStr = "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) eventType = line.slice(7);
+              if (line.startsWith("data: ")) dataStr += line.slice(6);
+            }
+            if (!eventType || !dataStr) continue;
+
+            try {
+              const data = JSON.parse(dataStr);
+              const store = useWorkflowStore.getState();
+
+              switch (eventType) {
+                case "node-start":
+                  // THIS node starts pulsing NOW
+                  store.updateNodeData(data.nodeId, { isRunning: true, runStatus: "running", runError: undefined, runOutput: undefined });
+                  break;
+
+                case "node-complete":
+                  // THIS node stops pulsing NOW, result renders immediately
+                  store.setNodeResult(data.nodeId, data.status, data.output, data.error);
+                  break;
+
+                case "workflow-complete":
+                  if (data.status === "failed") {
+                    showToast("Workflow run failed. Check node errors for details.", "error");
+                  } else if (data.status === "partial") {
+                    showToast("Some nodes failed during the workflow run.", "warning");
+                  }
+                  break;
+
+                case "error":
+                  showToast(data.error || "Workflow run failed.", "error");
+                  break;
+              }
+            } catch (parseErr) {
+              console.error("[frontend] SSE parse error:", parseErr);
+            }
+          }
+        }
+      } else {
+        // ─── Fallback: JSON response (non-SSE) ───
+        const data = await res.json();
+        const elapsed = Math.round(performance.now() - runStart);
+        console.log(`[frontend] Workflow run completed in ${elapsed}ms`, data.duration ? `(server: ${data.duration}ms)` : "");
+        if (data.nodeResults) {
+          for (const [nodeId, result] of Object.entries(data.nodeResults as Record<string, any>)) {
+            setNodeResult(nodeId, result.status, result.output, result.error);
+          }
+        }
+        if (data.status === "failed") {
+          showToast("Workflow run failed. Check node errors for details.", "error");
+        } else if (data.status === "partial") {
+          showToast("Some nodes failed during the workflow run.", "warning");
         }
       }
+
+      // Refresh run history
       const runsRes = await fetch(`/api/workflow/${workflowId}/runs`);
       if (runsRes.ok) { const { runs } = await runsRes.json(); useWorkflowStore.getState().setRunHistory(runs); }
     } catch (e: any) {
       console.error("[frontend] Run error:", e?.message || e);
+      showToast("Workflow run failed. Check node errors for details.", "error");
       // Mark all still-running nodes as failed
-      for (const node of nodes) {
+      const currentNodes = useWorkflowStore.getState().nodes;
+      const store = useWorkflowStore.getState();
+      for (const node of currentNodes) {
         const nd = node.data as any;
         if (nd.isRunning) {
           store.setNodeResult(node.id, "failed", undefined, e?.message || "Workflow run failed");
@@ -418,6 +486,36 @@ export default function TopBar({ allWorkflows }: Props) {
           }} />
         </div>
       </div>
+
+      {/* FIX 3: Toast notification */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, zIndex: 9999,
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "12px 18px", borderRadius: 12,
+          background: toast.type === "error" ? "rgba(248,113,113,0.1)" : "rgba(251,191,36,0.1)",
+          border: `1px solid ${toast.type === "error" ? "rgba(248,113,113,0.3)" : "rgba(251,191,36,0.3)"}`,
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          animation: "slideUp 0.2s ease",
+        }}>
+          {toast.type === "error" ? (
+            <XCircle style={{ width: 16, height: 16, color: "#f87171", flexShrink: 0 }} />
+          ) : (
+            <AlertTriangle style={{ width: 16, height: 16, color: "#fbbf24", flexShrink: 0 }} />
+          )}
+          <span style={{ fontSize: 13, color: toast.type === "error" ? "#f87171" : "#fbbf24", fontWeight: 500 }}>
+            {toast.message}
+          </span>
+          <button
+            type="button"
+            onClick={() => { setToast(null); if (toastTimeout.current) clearTimeout(toastTimeout.current); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#4a4a5e", marginLeft: 4, display: "flex" }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

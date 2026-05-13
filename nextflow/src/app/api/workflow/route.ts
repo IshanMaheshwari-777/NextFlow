@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const workflow = await withRetry(() => prisma.workflow.create({
       data: {
         userId: userId as string,
-        name: "Product Launch Kit Generator",
+        name: "Product Marketing Kit Generator",
         nodes: SAMPLE_NODES as any,
         edges: SAMPLE_EDGES as any,
       }

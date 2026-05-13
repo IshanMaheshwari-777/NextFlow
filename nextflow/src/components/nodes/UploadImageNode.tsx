@@ -61,7 +61,7 @@ export default memo(function UploadImageNode({ id, data, selected }: NodeProps) 
   };
 
   return (
-    <BaseNode id={id} type="upload-image" label={d.label || "Upload Image"} accentColor="#10b981" icon={<ImageIcon className="w-3.5 h-3.5" />} isRunning={d.isRunning} runStatus={d.runStatus} selected={selected}>
+    <BaseNode id={id} type="upload-image" label={d.label || "Upload Image"} accentColor="#10b981" icon={<ImageIcon className="w-3.5 h-3.5" />} isRunning={d.isRunning} runStatus={d.runStatus} runError={d.runError} selected={selected}>
       <input ref={ref} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       {d.previewUrl || d.fileUrl ? (
         <div className="relative">

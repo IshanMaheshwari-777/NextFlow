@@ -16,7 +16,6 @@ export type WorkflowRunRecord = { id: string; workflowId: string; status: string
 export const GROQ_MODELS = [
   { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Versatile)" },
   { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Fast)" },
-  { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B (32K context)" },
 ] as const;
 
 export const NODE_HANDLES: Record<NodeType, { inputs: HandleDef[]; outputs: HandleDef[] }> = {
@@ -36,7 +35,7 @@ export const SIDEBAR_NODES = [
   { type: "text" as NodeType, label: "Text", description: "Simple text input", icon: "Type", color: "#6366f1" },
   { type: "upload-image" as NodeType, label: "Upload Image", description: "jpg, png, webp, gif", icon: "Image", color: "#10b981" },
   { type: "upload-video" as NodeType, label: "Upload Video", description: "mp4, mov, webm, mkv", icon: "Video", color: "#f59e0b" },
-  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (Llama / Mixtral)", icon: "Sparkles", color: "#8b5cf6" },
+  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (Llama / Scout Vision)", icon: "Sparkles", color: "#8b5cf6" },
   { type: "crop-image" as NodeType, label: "Crop Image", description: "Trim to region", icon: "Crop", color: "#ef4444" },
   { type: "extract-frame" as NodeType, label: "Extract Frame", description: "Frame from video", icon: "Film", color: "#ec4899" },
 ];
