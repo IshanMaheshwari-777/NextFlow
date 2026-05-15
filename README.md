@@ -26,14 +26,16 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 
 - 🧩 **Visual Node Editor** — Drag-and-drop interface built on React Flow
 - 🤖 **LLM Integration** — Run prompts through Groq (Llama, Mixtral models) with markdown-rendered responses
-- 🖼️ **Image Processing** — Upload, crop, and transform images via Transloadit
+- 🎨 **AI Image Generation** — Generate high-quality images using Pollinations.ai with style presets and aspect ratio control
+- ✨ **Prompt Enhancement** — Automatically optimize simple prompts into high-fidelity image generation instructions
+- 🪄 **NL Workflow Builder** — Describe a workflow in plain English and let AI build the nodes and connections for you
+- 🖼️ **Image Processing** — Upload, crop, and transform images
 - 🎬 **Video Processing** — Upload videos and extract frames at specific timestamps
-- 📝 **Text Nodes** — Input text and pipe it between nodes
 - ⚡ **Background Execution** — Workflows run on Trigger.dev with real-time status tracking
 - 🎯 **Selective Execution** — Run full workflows, single nodes, or execute paths up to a specific node
 - ⏪ **Undo/Redo History** — Robust history stack for all workflow canvas modifications
 - 📊 **Run History** — Full execution history with per-node status, outputs, and timing
-- 🚀 **Sample Workflows** — Includes pre-built templates like the "Product Launch Kit Generator"
+- 🚀 **Sample Workflows** — Includes pre-built templates for marketing and product demo use cases
 - 🔐 **Authentication** — Clerk-based auth with Google SSO
 - 💾 **Auto-Save** — Workflows save automatically to a Postgres database
 - 🌙 **Dark UI** — Premium dark theme with purple accent design system
@@ -54,7 +56,8 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 | **Database** | [PostgreSQL](https://postgresql.org) via [Neon](https://neon.tech) |
 | **ORM** | [Prisma](https://prisma.io) |
 | **Background Jobs** | [Trigger.dev v4](https://trigger.dev) |
-| **LLM** | [Groq API](https://groq.com) (Llama 3.1, Mixtral) |
+| **LLM** | [Groq API](https://groq.com) (Llama 3.3, Mixtral) |
+| **Image Generation** | [Pollinations.ai](https://pollinations.ai) |
 | **Image/Video** | [Transloadit](https://transloadit.com) |
 | **Icons** | [Lucide React](https://lucide.dev) |
 | **Validation** | [Zod](https://zod.dev) |
@@ -232,6 +235,8 @@ nextflow/
 | **Upload Image** | Upload image file | — | `imageUrl` |
 | **Upload Video** | Upload video file | — | `videoUrl` |
 | **Run LLM** | Execute AI prompt | `text`, `image` | `text` |
+| **Generate Image**| AI Image Generation | `prompt`, `style`, `ratio` | `imageUrl` |
+| **Enhance Prompt** | Optimize prompts | `prompt` | `text` |
 | **Crop Image** | Crop image by % | `imageUrl` | `imageUrl` |
 | **Extract Frame** | Extract video frame | `videoUrl` | `imageUrl` |
 
