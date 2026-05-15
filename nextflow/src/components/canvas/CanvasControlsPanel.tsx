@@ -42,7 +42,7 @@ export default function CanvasControlsPanel() {
       </button>
 
       {/* Stack of Canvas Layout Controls (FIX 4) */}
-      <div className="pointer-events-auto flex flex-col gap-[2px] bg-[#12121a] border border-[#1e1e2a] rounded-xl p-1 shadow-xl w-9">
+      <div className="pointer-events-auto flex flex-col gap-[2px] bg-[#12121a] border border-[var(--border)] rounded-xl p-1 shadow-xl w-9">
         <button
           type="button"
           onClick={() => zoomIn({ duration: 200 })}
@@ -68,7 +68,7 @@ export default function CanvasControlsPanel() {
           <Maximize className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-full h-[1px] bg-[#1e1e2a] my-1" />
+        <div className="w-full h-[1px] bg-[var(--border)] my-1" />
 
         <button
           type="button"

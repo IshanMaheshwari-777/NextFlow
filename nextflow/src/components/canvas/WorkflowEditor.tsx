@@ -5,9 +5,8 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import { AppNode, AppEdge, WorkflowRunRecord } from "@/types";
 import WorkflowCanvas from "./WorkflowCanvas";
 import TopBar from "@/components/layout/TopBar";
-import LeftSidebar from "@/components/layout/LeftSidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
 import NodePicker from "@/components/layout/NodePicker";
+import RunHistoryPanel from "@/components/layout/RunHistoryPanel";
 
 type Props = {
   workflow: { id: string; name: string; nodes: AppNode[]; edges: AppEdge[]; workflowRuns: WorkflowRunRecord[] };
@@ -17,9 +16,9 @@ type Props = {
 export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
   const { loadWorkflow, setRunHistory, nodes, edges, workflowName, workflowId, undo, redo } = useWorkflowStore();
   const saveRef = useRef<NodeJS.Timeout | null>(null);
-  // Context-menu node picker (right-click only)
-  const [showCtxPicker, setShowCtxPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     loadWorkflow({ id: workflow.id, name: workflow.name, nodes: workflow.nodes, edges: workflow.edges });
@@ -30,16 +29,16 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        if (e.shiftKey) {
-          e.preventDefault();
-          redo();
-        } else {
-          e.preventDefault();
-          undo();
-        }
+        if (e.shiftKey) { e.preventDefault(); redo(); } else { e.preventDefault(); undo(); }
       } else if ((e.metaKey || e.ctrlKey) && e.key === "y") {
+        e.preventDefault(); redo();
+      } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
-        redo();
+        setPickerPos(null);
+        setShowPicker(true);
+      } else if (e.key === "Escape") {
+        setShowPicker(false);
+        setShowHistory(false);
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
@@ -48,7 +47,7 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
 
   const save = useCallback(async () => {
     if (!workflowId) return;
-    try { await fetch(`/api/workflow/${workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workflowName, nodes, edges }) }); } catch { }
+    try { await fetch(`/api/workflow/${workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workflowName, nodes, edges }) }); } catch {}
   }, [workflowId, workflowName, nodes, edges]);
 
   useEffect(() => {
@@ -57,30 +56,30 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
     return () => { if (saveRef.current) clearTimeout(saveRef.current); };
   }, [nodes, edges, workflowName]);
 
-  // Right-click to open context node picker at cursor
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest(".react-flow__node")) return;
     e.preventDefault();
     setPickerPos({ x: e.clientX, y: e.clientY });
-    setShowCtxPicker(true);
+    setShowPicker(true);
   }, []);
 
   return (
     <ReactFlowProvider>
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "#0a0a0f" }}>
-        <TopBar allWorkflows={allWorkflows} />
-        <div style={{ display: "flex", flex: 1, minHeight: 0 }} onContextMenu={handleContextMenu}>
-          <LeftSidebar />
-          <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
-            <WorkflowCanvas />
-          </div>
-          <RightSidebar />
+      <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--canvas-bg)" }}>
+        <TopBar allWorkflows={allWorkflows} onHistoryOpen={() => setShowHistory(true)} />
+        <div style={{ flex: 1, position: "relative", minHeight: 0 }} onContextMenu={handleContextMenu}>
+          <WorkflowCanvas onAddNode={() => { setPickerPos(null); setShowPicker(true); }} />
         </div>
-        <NodePicker
-          open={showCtxPicker}
-          onClose={() => { setShowCtxPicker(false); setPickerPos(null); }}
-          position={pickerPos}
-        />
       </div>
+
+      <NodePicker
+        open={showPicker}
+        onClose={() => { setShowPicker(false); setPickerPos(null); }}
+        position={pickerPos}
+      />
+
+      <RunHistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
     </ReactFlowProvider>
   );
 }

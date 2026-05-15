@@ -62,16 +62,16 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
     if (error?.message === "NEXT_NOT_FOUND" || error?.digest?.startsWith("NEXT_NOT_FOUND")) throw error;
     console.error("[WorkflowPage] Database error:", error);
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a0a0f", color: "#e4e4ed", padding: "2rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg)", color: "var(--text)", padding: "2rem" }}>
         <h2>Unable to load workflow</h2>
-        <p style={{ color: "#8b8b9e", marginBottom: "20px" }}>We encountered an error connecting to the database.</p>
-        <div style={{ background: "#1c1c28", padding: "1rem", borderRadius: "8px", textAlign: "left", fontFamily: "monospace", fontSize: "0.85rem", overflowX: "auto", maxWidth: "800px", width: "100%", marginBottom: "20px" }}>
-          <strong style={{ color: "#f87171" }}>Error Details:</strong>
-          <pre style={{ margin: "0.5rem 0 0 0", whiteSpace: "pre-wrap", color: "#fca5a5" }}>
+        <p style={{ color: "var(--text-secondary)", marginBottom: "20px" }}>We encountered an error connecting to the database.</p>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "1rem", borderRadius: "8px", textAlign: "left", fontFamily: "monospace", fontSize: "0.85rem", overflowX: "auto", maxWidth: "800px", width: "100%", marginBottom: "20px" }}>
+          <strong style={{ color: "var(--error)" }}>Error Details:</strong>
+          <pre style={{ margin: "0.5rem 0 0 0", whiteSpace: "pre-wrap", color: "var(--error)" }}>
             {error?.message || error?.toString() || "Unknown error"}
           </pre>
         </div>
-        <button style={{ padding: "8px 16px", background: "#8b5cf6", color: "white", borderRadius: "8px", border: "none", cursor: "pointer" }}>Try Again</button>
+        <button style={{ padding: "8px 16px", background: "var(--accent)", color: "white", borderRadius: "8px", border: "none", cursor: "pointer" }}>Try Again</button>
       </div>
     );
   }

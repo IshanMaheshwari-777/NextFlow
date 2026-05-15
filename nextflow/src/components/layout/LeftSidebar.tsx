@@ -26,7 +26,7 @@ export default function LeftSidebar() {
   return (
     <div style={{
       flexShrink: 0, height: "100%", display: "flex", flexDirection: "column",
-      background: "#0e0e14", borderRight: "1px solid #1c1c28",
+      background: "var(--surface)", borderRight: "1px solid var(--border)",
       width: isLeftOpen ? EXPANDED_W : COLLAPSED_W,
       minWidth: isLeftOpen ? EXPANDED_W : COLLAPSED_W,
       transition: "width 220ms cubic-bezier(0.4,0,0.2,1), min-width 220ms cubic-bezier(0.4,0,0.2,1)",
@@ -37,14 +37,14 @@ export default function LeftSidebar() {
         <div style={{ width: COLLAPSED_W, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12, gap: 4, height: "100%" }}>
           <button
             type="button" onClick={() => setIsLeftOpen(true)}
-            style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "#4a4a5e", marginBottom: 8 }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; e.currentTarget.style.color = "#8b8b9e"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#4a4a5e"; }}
+            style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", marginBottom: 8 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--input-bg)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
             title="Expand panel"
           >
             <ChevronsRight style={{ width: 16, height: 16 }} />
           </button>
-          <div style={{ width: 24, height: 1, background: "#1c1c28", marginBottom: 4 }} />
+          <div style={{ width: 24, height: 1, background: "var(--surface)", marginBottom: 4 }} />
           {SIDEBAR_NODES.map(node => <CollapsedNodeIcon key={node.type} node={node} onClick={handleClick} />)}
         </div>
       )}
@@ -54,12 +54,12 @@ export default function LeftSidebar() {
         <>
           {/* Header */}
           <div style={{ padding: "16px 14px 10px", flexShrink: 0, minWidth: EXPANDED_W, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, color: "#4a4a5e", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Nodes</h2>
+            <h2 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Nodes</h2>
             <button
               type="button" onClick={() => setIsLeftOpen(false)}
-              style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "#4a4a5e" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; e.currentTarget.style.color = "#8b8b9e"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#4a4a5e"; }}
+              style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--input-bg)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
               title="Collapse panel"
             >
               <ChevronsLeft style={{ width: 14, height: 14 }} />
@@ -67,21 +67,21 @@ export default function LeftSidebar() {
           </div>
           {/* Search */}
           <div style={{ padding: "0 14px 10px", flexShrink: 0, minWidth: EXPANDED_W }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0c0c12", borderRadius: 10, padding: "8px 12px", border: "1px solid #1c1c28" }}>
-              <Search style={{ width: 14, height: 14, color: "#4a4a5e", flexShrink: 0 }} />
-              <input type="text" style={{ background: "transparent", border: "none", outline: "none", fontSize: 13, color: "#8b8b9e", width: "100%" }} placeholder="Search nodes..." value={search} onChange={e => setSearch(e.target.value)} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--border)" }}>
+              <Search style={{ width: 14, height: 14, color: "var(--text-muted)", flexShrink: 0 }} />
+              <input type="text" style={{ background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-secondary)", width: "100%" }} placeholder="Search nodes..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
           {/* Node list */}
           <div style={{ flex: 1, overflowY: "auto", padding: "2px 6px", minWidth: EXPANDED_W }}>
             {filtered.length === 0 ? (
-              <p style={{ textAlign: "center", fontSize: 12, color: "#4a4a5e", padding: "32px 0" }}>No matching nodes</p>
+              <p style={{ textAlign: "center", fontSize: 12, color: "var(--text-muted)", padding: "32px 0" }}>No matching nodes</p>
             ) : (
               filtered.map(node => <ExpandedNodeItem key={node.type} node={node} onClick={handleClick} />)
             )}
           </div>
           {/* Footer */}
-          <div style={{ padding: "10px 14px", borderTop: "1px solid #1c1c28", textAlign: "center", flexShrink: 0, minWidth: EXPANDED_W }}>
+          <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", textAlign: "center", flexShrink: 0, minWidth: EXPANDED_W }}>
             <span style={{ fontSize: 9, color: "#2e2e3e", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Drag or click to add</span>
           </div>
         </>
@@ -134,8 +134,8 @@ function ExpandedNodeItem({ node, onClick }: { node: (typeof SIDEBAR_NODES)[numb
       style={{
         width: "100%", display: "flex", alignItems: "center", gap: 12,
         padding: "10px 12px", marginBottom: 2,
-        background: hovered ? "#16161f" : "transparent",
-        border: `1px solid ${hovered ? "#1c1c28" : "transparent"}`,
+        background: hovered ? "var(--input-bg)" : "transparent",
+        border: `1px solid ${hovered ? "var(--surface)" : "transparent"}`,
         borderRadius: 12, cursor: "grab", textAlign: "left", transition: "all 150ms ease",
       }}
     >
@@ -149,8 +149,8 @@ function ExpandedNodeItem({ node, onClick }: { node: (typeof SIDEBAR_NODES)[numb
         {Icon && <Icon style={{ width: 18, height: 18, color: node.color }} />}
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: hovered ? "#fff" : "#b4b4c8", transition: "color 150ms ease", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>{node.label}</p>
-        <p style={{ margin: "2px 0 0", fontSize: 11, color: hovered ? "#6a6a80" : "#4a4a5e", transition: "color 150ms ease", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>{node.description}</p>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: hovered ? "var(--text)" : "var(--text-muted)", transition: "color 150ms ease", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>{node.label}</p>
+        <p style={{ margin: "2px 0 0", fontSize: 11, color: hovered ? "#6a6a80" : "var(--text-muted)", transition: "color 150ms ease", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>{node.description}</p>
       </div>
     </button>
   );

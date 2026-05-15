@@ -103,7 +103,7 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
         {/* 2. Style dropdown */}
         <div>
           <p style={{fontSize:'9px',fontWeight:600,letterSpacing:'0.08em',
-            textTransform:'uppercase',color:'#555',marginBottom:'4px'}}>Style</p>
+            textTransform:'uppercase',color:'var(--text-muted)',marginBottom:'4px'}}>Style</p>
           <select
             className="node-input"
             value={d.style || 'Default'}
@@ -118,7 +118,7 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
         {/* 3. Aspect ratio pills */}
         <div>
           <p style={{fontSize:'9px',fontWeight:600,letterSpacing:'0.08em',
-            textTransform:'uppercase',color:'#555',marginBottom:'4px'}}>
+            textTransform:'uppercase',color:'var(--text-muted)',marginBottom:'4px'}}>
             Aspect ratio
           </p>
           <div style={{display:'flex',gap:'4px'}}>
@@ -130,11 +130,11 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
                   flex:1,height:'26px',borderRadius:'5px',cursor:'pointer',
                   fontSize:'10px',fontWeight: d.aspectRatio === r ? 600 : 400,
                   background: d.aspectRatio === r
-                    ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    ? 'var(--border)' : 'transparent',
                   border: d.aspectRatio === r
-                    ? '1px solid rgba(255,255,255,0.2)'
-                    : '1px solid rgba(255,255,255,0.07)',
-                  color: d.aspectRatio === r ? '#e8e8e8' : '#555',
+                    ? '1px solid var(--border)'
+                    : '1px solid var(--border-subtle)',
+                  color: d.aspectRatio === r ? 'var(--text)' : 'var(--text-muted)',
                   transition:'all 100ms ease',
                 }}
               >
@@ -148,7 +148,7 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
         {d.generatedImageUrl && !d.isGenerating && (
           <div>
             <div style={{position:'relative',borderRadius:'7px',overflow:'hidden',
-              border:'1px solid rgba(255,255,255,0.07)'}}>
+              border:'1px solid var(--border-subtle)'}}>
               <img
                 src={d.generatedImageUrl}
                 alt="generated"
@@ -175,13 +175,13 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
                       })
                   }} onMouseDown={e => e.stopPropagation()} style={{
               display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 500,
-              background: "#16161f", color: "#8b8b9e", border: "1px solid #1e1e2a", cursor: "pointer",
+              background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border)", cursor: "pointer",
             }}>
               <Download style={{ width: 10, height: 10 }} /> Download
             </button>
             <button type="button" onClick={() => window.open(d.generatedImageUrl, '_blank')} onMouseDown={e => e.stopPropagation()} style={{
               display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 500,
-              background: "#16161f", color: "#8b8b9e", border: "1px solid #1e1e2a", cursor: "pointer",
+              background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border)", cursor: "pointer",
             }}>
               <Maximize2 style={{ width: 10, height: 10 }} /> View full size
             </button>
@@ -191,7 +191,7 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
               <span style={{fontSize:'9px',color:'#22c55e'}}>
                 ✓ Generated successfully
               </span>
-              <span style={{fontSize:'9px',color:'#444'}}>
+              <span style={{fontSize:'9px',color:'var(--text-muted)'}}>
                 {d.imageWidth && d.imageHeight ? `${d.imageWidth}×${d.imageHeight}` : ''}
               </span>
             </div>
@@ -254,8 +254,8 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
                   onMouseDown={e => e.stopPropagation()}
                   disabled={isCooldownActive}
                   style={{
-                    fontSize:'9px', color: isCooldownActive ? '#444' : '#888', background:'transparent',
-                    border:'1px solid rgba(255,255,255,0.1)',borderRadius:'4px',
+                    fontSize:'9px', color: isCooldownActive ? 'var(--text-muted)' : 'var(--text-secondary)', background:'transparent',
+                    border:'1px solid var(--border)',borderRadius:'4px',
                     padding:'2px 8px', cursor: isCooldownActive ? 'not-allowed' : 'pointer',
                     opacity: isCooldownActive ? 0.5 : 1, transition: 'all 0.2s ease'
                   }}
@@ -271,9 +271,9 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
                 disabled={isCooldownActive}
                 style={{
                   width: '100%', height: '32px', borderRadius: '8px',
-                  background: isCooldownActive ? 'rgba(255,255,255,0.03)' : 'rgba(244,63,94,0.1)',
-                  border: isCooldownActive ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(244,63,94,0.2)',
-                  color: isCooldownActive ? '#444' : '#f43f5e',
+                  background: isCooldownActive ? 'var(--border-subtle)' : 'rgba(244,63,94,0.1)',
+                  border: isCooldownActive ? '1px solid var(--border-subtle)' : '1px solid rgba(244,63,94,0.2)',
+                  color: isCooldownActive ? 'var(--text-muted)' : '#f43f5e',
                   fontSize: '11px', fontWeight: 600, cursor: isCooldownActive ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s ease', opacity: isCooldownActive ? 0.7 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'

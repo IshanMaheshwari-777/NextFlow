@@ -3,7 +3,7 @@ export default function WorkflowLoading() {
     <div style={{
       height: "100vh", width: "100vw", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      background: "#0a0a0f", position: "relative", overflow: "hidden",
+      background: "var(--canvas-bg)", position: "relative", overflow: "hidden",
     }}>
       {/* Ambient glow */}
       <div style={{
@@ -27,10 +27,10 @@ export default function WorkflowLoading() {
         </svg>
       </div>
 
-      <p style={{ fontSize: 14, fontWeight: 500, color: "#8b8b9e", margin: 0 }}>Loading workflow...</p>
+      <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", margin: 0 }}>Loading workflow...</p>
 
       {/* Loading bar */}
-      <div style={{ width: 160, height: 2, borderRadius: 2, background: "#1c1c28", marginTop: 24, overflow: "hidden" }}>
+      <div style={{ width: 160, height: 2, borderRadius: 2, background: "var(--border)", marginTop: 24, overflow: "hidden" }}>
         <div style={{ width: "35%", height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #8b5cf6, #a78bfa)", animation: "loadingBar 1.5s ease-in-out infinite" }} />
       </div>
 

@@ -28,7 +28,7 @@ export default function RightSidebar() {
   return (
     <div style={{
       flexShrink: 0, height: "100%", display: "flex", flexDirection: "column",
-      background: "#0e0e14", borderLeft: isRightOpen ? "1px solid #1c1c28" : "none",
+      background: "var(--surface)", borderLeft: isRightOpen ? "1px solid var(--border)" : "none",
       width: isRightOpen ? 280 : 0, minWidth: isRightOpen ? 280 : 0,
       transition: "width 200ms cubic-bezier(0.4,0,0.2,1), min-width 200ms cubic-bezier(0.4,0,0.2,1)",
       overflow: "hidden", zIndex: 40,
@@ -36,14 +36,14 @@ export default function RightSidebar() {
       {/* Header */}
       <div style={{ padding: "16px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, minWidth: 280 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <History style={{ width: 14, height: 14, color: "#4a4a5e" }} />
-          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#4a4a5e", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Run History</h2>
+          <History style={{ width: 14, height: 14, color: "var(--text-muted)" }} />
+          <h2 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Run History</h2>
         </div>
         <button
           type="button" onClick={() => setIsRightOpen(false)}
-          style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "#4a4a5e" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; e.currentTarget.style.color = "#8b8b9e"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#4a4a5e"; }}
+          style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--input-bg)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
           title="Collapse panel"
         >
           <ChevronsRight style={{ width: 14, height: 14 }} />
@@ -59,25 +59,25 @@ export default function RightSidebar() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <StatusDot status={activeRun.status} size={10} />
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#e4e4ed" }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
                       Run #{runHistory.length - runHistory.findIndex(r => r.id === activeRun.id)}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                       <StatusBadge status={activeRun.status} />
-                      <span style={{ fontSize: 11, color: "#4a4a5e" }}>{activeRun.nodeRuns?.length || 0} nodes</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{activeRun.nodeRuns?.length || 0} nodes</span>
                     </div>
                   </div>
                 </div>
-                <span style={{ fontSize: 13, color: "#4a4a5e", fontWeight: 500 }}>{formatDuration(activeRun.duration)}</span>
+                <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>{formatDuration(activeRun.duration)}</span>
               </div>
             </div>
 
             {/* Node Execution Tree */}
             <div style={{ padding: "0 18px 16px" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#4a4a5e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>
                 Node Execution
               </div>
-              <div style={{ position: "relative", borderLeft: "2px solid #1c1c28", marginLeft: 6, paddingLeft: 18, paddingBottom: 4 }}>
+              <div style={{ position: "relative", borderLeft: "2px solid var(--border)", marginLeft: 6, paddingLeft: 18, paddingBottom: 4 }}>
                 {(activeRun.nodeRuns || []).map((nr, i) => {
                   const outputPreview = nr.output && typeof nr.output === "object" && Object.values(nr.output)[0];
                   return (
@@ -86,16 +86,16 @@ export default function RightSidebar() {
                       <div style={{
                         position: "absolute", left: -25, top: 4,
                         width: 10, height: 10, borderRadius: "50%",
-                        border: "2px solid #0e0e14",
+                        border: "2px solid var(--surface)",
                         background: nr.status === "success" ? "#34d399" : nr.status === "running" ? "#fbbf24" : nr.status === "failed" ? "#f87171" : "#2e2e3e",
                         boxShadow: nr.status === "running" ? "0 0 8px rgba(251,191,36,0.4)" : "none",
                       }} />
-                      <div style={{ fontSize: 13, fontWeight: 600, color: nr.status === "pending" ? "#4a4a5e" : "#b4b4c8" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: nr.status === "pending" ? "var(--text-muted)" : "var(--text-secondary)" }}>
                         {nr.nodeLabel || nr.nodeType}
                       </div>
                       {nr.status === "success" && outputPreview && (
                         <div style={{
-                          fontSize: 11, color: "#4a4a5e", marginTop: 3,
+                          fontSize: 11, color: "var(--text-muted)", marginTop: 3,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200,
                         }}>
                           → {String(outputPreview).length > 45 ? String(outputPreview).slice(0, 45) + "..." : String(outputPreview)}
@@ -117,7 +117,7 @@ export default function RightSidebar() {
 
             {/* Other Runs */}
             {otherRuns.length > 0 && (
-              <div style={{ borderTop: "1px solid #1c1c28", paddingTop: 8 }}>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
                 {otherRuns.map((run) => <RunCard key={run.id} run={run} runNumber={runHistory.length - runHistory.findIndex(r => r.id === run.id)} onSelect={() => setSelectedRunId(run.id)} />)}
               </div>
             )}
@@ -126,12 +126,12 @@ export default function RightSidebar() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 280, textAlign: "center" }}>
             <div style={{
               width: 48, height: 48, borderRadius: 14,
-              background: "#12121a", border: "1px solid #1c1c28",
+              background: "var(--surface)", border: "1px solid var(--border)",
               display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
             }}>
               <History style={{ width: 20, height: 20, color: "#2e2e3e" }} />
             </div>
-            <p style={{ fontSize: 13, color: "#4a4a5e", fontWeight: 600, margin: 0 }}>No runs yet</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, margin: 0 }}>No runs yet</p>
             <p style={{ fontSize: 11, color: "#2e2e3e", marginTop: 6 }}>Click Run Workflow to test</p>
           </div>
         )}
@@ -169,23 +169,23 @@ function RunCard({ run, runNumber, onSelect }: { run: any; runNumber: number; on
       style={{
         width: "100%", textAlign: "left", padding: "12px 18px",
         display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        background: hovered ? "#12121a" : "transparent",
+        background: hovered ? "var(--surface)" : "transparent",
         border: "none", cursor: "pointer", transition: "background 150ms ease",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <StatusDot status={run.status} size={8} />
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: hovered ? "#e4e4ed" : "#8b8b9e", transition: "color 150ms ease" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: hovered ? "var(--text)" : "var(--text-secondary)", transition: "color 150ms ease" }}>
             Run #{runNumber}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
             <StatusBadge status={run.status} />
-            <span style={{ fontSize: 11, color: "#4a4a5e" }}>{run.nodeRuns?.length || 0} nodes</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{run.nodeRuns?.length || 0} nodes</span>
           </div>
         </div>
       </div>
-      <span style={{ fontSize: 12, color: "#4a4a5e", fontWeight: 500 }}>{formatDuration(run.duration)}</span>
+      <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{formatDuration(run.duration)}</span>
     </button>
   );
 }

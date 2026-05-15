@@ -3,7 +3,7 @@ export default function Loading() {
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      background: "#0a0a0f", position: "relative", overflow: "hidden",
+      background: "var(--bg)", position: "relative", overflow: "hidden",
     }}>
       {/* Ambient glow */}
       <div style={{
@@ -33,7 +33,7 @@ export default function Loading() {
 
       {/* Loading bar */}
       <div style={{
-        width: 200, height: 3, borderRadius: 2, background: "#1c1c28",
+        width: 200, height: 3, borderRadius: 2, background: "var(--border)",
         marginTop: 32, overflow: "hidden",
       }}>
         <div style={{

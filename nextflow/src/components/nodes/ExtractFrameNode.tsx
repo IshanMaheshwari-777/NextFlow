@@ -24,16 +24,16 @@ function ImagePreviewModal({ src, label, onClose }: { src: string; label: string
       }}
     >
       <div onClick={e => e.stopPropagation()} style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh" }}>
-        <img src={src} alt={label} style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 12, border: "1px solid #1c1c28" }} />
+        <img src={src} alt={label} style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 12, border: "1px solid var(--border)" }} />
         <button
           type="button" onClick={onClose}
           style={{
             position: "absolute", top: -12, right: -12,
             width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "#16161f", border: "1px solid #1e1e2a", cursor: "pointer", color: "#8b8b9e",
+            background: "var(--input-bg)", border: "1px solid var(--border)", cursor: "pointer", color: "var(--text-secondary)",
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1e1e2a"; }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderColor = "var(--border)"; }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
@@ -80,20 +80,20 @@ export default memo(function ExtractFrameNode({ id, data, selected }: NodeProps)
       {outputIsImage && (
         <div className="space-y-1.5 mt-2">
           <label className="text-[10px] text-zinc-500 uppercase tracking-wider">Extracted Frame</label>
-          <img src={outputImageUrl} alt="frame" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid #1e1e2a", background: "#0a0a0f", cursor: "pointer" }} onClick={() => setShowModal(true)} onMouseDown={e => e.stopPropagation()} />
+          <img src={outputImageUrl} alt="frame" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer" }} onClick={() => setShowModal(true)} onMouseDown={e => e.stopPropagation()} />
           {(d.runOutput?.width || d.runOutput?.height) && (
             <p className="text-[10px] text-zinc-500">{d.runOutput.width} × {d.runOutput.height}</p>
           )}
           <div style={{ display: "flex", gap: 6 }}>
             <button type="button" onClick={handleDownload} onMouseDown={e => e.stopPropagation()} style={{
               display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 500,
-              background: "#16161f", color: "#8b8b9e", border: "1px solid #1e1e2a", cursor: "pointer",
+              background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border)", cursor: "pointer",
             }}>
               <Download style={{ width: 10, height: 10 }} /> Download
             </button>
             <button type="button" onClick={() => setShowModal(true)} onMouseDown={e => e.stopPropagation()} style={{
               display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 500,
-              background: "#16161f", color: "#8b8b9e", border: "1px solid #1e1e2a", cursor: "pointer",
+              background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border)", cursor: "pointer",
             }}>
               <Maximize2 style={{ width: 10, height: 10 }} /> View full size
             </button>

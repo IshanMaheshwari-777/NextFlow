@@ -66,7 +66,7 @@ export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) 
         <div className="space-y-1.5">
           {/* Video Player */}
           {videoSrc && (
-            <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a2a", background: "#0a0a0f" }}>
+            <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a2a", background: "var(--bg)" }}>
               <video
                 src={videoSrc}
                 controls

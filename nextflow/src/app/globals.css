@@ -2,29 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design System ─── */
+/* ─── Theme Variables ─── */
 :root {
-  --bg: #0a0a0f;
-  --sidebar: #0e0e14;
-  --topbar: #0e0e14;
-  --surface: #12121a;
-  --surface-hover: #16161f;
-  --input-bg: #0c0c12;
-  --border: #1c1c28;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --text: #e4e4ed;
-  --text-secondary: #8b8b9e;
-  --text-muted: #4a4a5e;
-  --text-dim: #2e2e3e;
+  --bg: #09090b;
+  --canvas-bg: #09090b;
+  --sidebar: #09090b;
+  --topbar: #09090b;
+  --surface: #18181b;
+  --surface-hover: #27272a;
+  --input-bg: #18181b;
+  --border: #27272a;
+  --border-subtle: #1f1f22;
+  --text: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-dim: #52525b;
   --accent: #8b5cf6;
   --accent-glow: rgba(139, 92, 246, 0.2);
   --accent-border: rgba(139, 92, 246, 0.15);
-  --success: #34d399;
-  --error: #f87171;
-  --warning: #fbbf24;
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
   --radius: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --node-bg: #18181b;
+  --node-border: #27272a;
+  --node-border-hover: #3f3f46;
+  --nav-bg: #000000;
+  --nav-hover: #18181b;
+  --image-filter: grayscale(100%) contrast(120%);
+  --topbar-border: #27272a;
+  --nav-active: #27272a;
+  --nav-text-inactive: #a1a1aa;
+  --nav-text-active: #fafafa;
+  --hero-bg: linear-gradient(135deg, #09090b 0%, #18181b 50%, #09090b 100%);
+}
+
+html.light {
+  --image-filter: grayscale(100%) contrast(150%) invert(1);
+  --bg: #FAFAFA;
+  --canvas-bg: #F8F8F8;
+  --sidebar: #FAFAFA;
+  --topbar: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-hover: #F5F5F5;
+  --input-bg: #F5F5F5;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --text: #0A0A0A;
+  --text-secondary: #525252;
+  --text-muted: #A3A3A3;
+  --text-dim: #D4D4D4;
+  --node-bg: #FFFFFF;
+  --node-border: rgba(0, 0, 0, 0.1);
+  --topbar-border: rgba(0, 0, 0, 0.08);
+  --nav-hover: rgba(0, 0, 0, 0.05);
+  --nav-active: rgba(0, 0, 0, 0.08);
+  --nav-text-inactive: #525252;
+  --nav-text-active: #0A0A0A;
+  --hero-bg: linear-gradient(135deg, #F0F0F0 0%, #E5E5E5 50%, #F0F0F0 100%);
 }
 
 *,
@@ -60,12 +97,17 @@ body {
 
 .react-flow__minimap {
   width: 140px !important;
-  background: var(--sidebar) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-lg) !important;
+  background: rgba(10, 10, 10, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
   overflow: hidden;
-  opacity: 0.7;
+  opacity: 0.85;
   transition: opacity 0.2s ease;
+}
+
+html.light .react-flow__minimap {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
 .react-flow__minimap:hover {
@@ -120,90 +162,53 @@ body {
 }
 
 .react-flow__controls {
-  border-radius: var(--radius-lg) !important;
-  border: 1px solid var(--border) !important;
-  background: rgba(14, 14, 20, 0.85) !important;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-  bottom: 20px !important;
-  left: 20px !important;
-}
-
-.react-flow__controls button {
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border-color: var(--border) !important;
-}
-
-.react-flow__controls button:hover {
-  background: var(--surface) !important;
-  color: var(--text) !important;
+  display: none !important;
 }
 
 /* ─── Animations ─── */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pickerIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #141414 25%,
-    #1f1f1f 50%,
-    #141414 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-
-.animate-in {
-  animation: fadeIn 0.15s ease;
-}
-
-.fade-in {
-  animation: fadeIn 0.15s ease;
-}
-
-.zoom-in-95 {
-  animation: fadeIn 0.15s ease;
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin {
   animation: spin 1s linear infinite !important;
 }
+
+.skeleton {
+  background: linear-gradient(90deg, #141414 25%, #1f1f1f 50%, #141414 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.animate-in { animation: fadeIn 0.15s ease; }
+.fade-in { animation: fadeIn 0.15s ease; }
+.picker-in { animation: pickerIn 0.13s cubic-bezier(0.16, 1, 0.3, 1); }
+.slide-in-right { animation: slideInRight 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
@@ -216,39 +221,35 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
 }
 
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.18);
 }
 
 /* ─── Node Styles ─── */
 @keyframes nodeGlow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 15px rgba(139, 92, 246, 0.2);
-  }
-
-  50% {
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.8), 0 0 35px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.25);
-  }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 15px rgba(139, 92, 246, 0.2); }
+  50% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.7), 0 0 30px rgba(139, 92, 246, 0.5); }
 }
 
 .node-running {
   animation: nodeGlow 1.5s ease-in-out infinite;
-  border-color: rgba(139, 92, 246, 0.8) !important;
+  border-color: rgba(139, 92, 246, 0.6) !important;
 }
 
-.node-success {
-  border-left: 3px solid var(--success) !important;
-}
-
-.node-failed {
-  border-left: 3px solid var(--error) !important;
-}
+.node-success {}
+.node-failed {}
 
 .node-input {
   width: 100%;
@@ -265,10 +266,13 @@ body {
   font-family: inherit;
 }
 
+html.light .node-input {
+  color: #525252;
+}
+
 .node-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .node-input:disabled,
@@ -278,19 +282,18 @@ body {
 }
 
 .node-input::placeholder {
-  color: #3f3f46;
+  color: var(--text-muted);
+  opacity: 0.5;
 }
 
 select.node-input {
   cursor: pointer;
   appearance: none;
   padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234a4a5e' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
-
-
 
 /* ─── Clerk ─── */
 .cl-card {
@@ -300,92 +303,81 @@ select.node-input {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
 }
 
-.cl-formFieldInput,
-.cl-phoneNumberInput__input {
-  background: var(--input-bg) !important;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ─── Ghost Button ─── */
+.ghost-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 100ms ease;
+  flex-shrink: 0;
+}
+
+.ghost-btn:hover {
+  background: var(--nav-hover);
+  color: var(--text-secondary);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ghost-btn:disabled:hover {
+  background: transparent;
+}
+/* ─── CLERK CSS OVERRIDES ─── */
+.cl-formFieldInput {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.cl-socialButtonsBlockButton {
+  background: var(--surface) !important;
   border-color: var(--border) !important;
   color: var(--text) !important;
-  border-radius: 6px !important;
 }
 
-.cl-formFieldInput:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px var(--accent-glow) !important;
+.cl-dividerLine {
+  background: var(--border) !important;
 }
 
-/* Clerk Modals & Text Overrides */
-
-/* Force Clerk CSS Variables */
-:root,
-.cl-rootBox,
-.cl-modalBackdrop,
-.cl-modalContent,
-.cl-userButtonPopoverCard,
-.cl-userProfile,
-.cl-profilePage {
-  --cl-colorText: #e4e4ed !important;
-  --cl-colorTextSecondary: #8b8b9e !important;
-  --cl-colorBackground: #12121a !important;
-  --cl-colorInputBackground: #0c0c12 !important;
-  --cl-colorInputText: #e4e4ed !important;
-  --cl-colorPrimary: #8b5cf6 !important;
+.cl-dividerText {
+  color: var(--text-muted) !important;
 }
 
-.cl-modalContent,
-.cl-userProfile,
-.cl-profilePage,
-.cl-scrollBox,
-.cl-userButtonPopoverCard {
-  background: var(--surface) !important;
-}
-
-/* Aggressive Text Overrides */
-.cl-modalContent *,
-.cl-userButtonPopoverCard * {
-  color: var(--text);
-}
-
-/* Restore Secondary Colors */
-.cl-modalContent .cl-userPreviewSecondaryIdentifier,
-.cl-modalContent .cl-profileSectionSubtitle,
-.cl-modalContent .cl-profileSectionSubtitle p,
-.cl-modalContent .cl-breadcrumbsItemDivider,
-.cl-userButtonPopoverCard .cl-userPreviewSecondaryIdentifier,
-.cl-navbarButton {
-  color: var(--text-secondary) !important;
-}
-
-/* Restore Primary Colors */
-.cl-navbarButton[data-active="true"] {
-  color: var(--accent) !important;
-  background: var(--accent-glow) !important;
-}
-
-.cl-navbarButton:hover {
-  color: var(--text) !important;
-  background: var(--surface-hover) !important;
-}
-
-.cl-badge {
-  background: var(--accent-glow) !important;
-  color: var(--accent) !important;
-  border-color: var(--accent-border) !important;
-}
-
-.cl-profileSectionPrimaryButton,
-.cl-footerActionLink {
-  color: var(--accent) !important;
-}
-
-.cl-pageScrollBox {
-  background: transparent !important;
-}
-
-.cl-button {
+html.light .cl-rootBox *, html.light .cl-modalContent *, html.light .cl-userButtonPopoverCard *, html.light .cl-headerTitle, html.light .cl-headerSubtitle, html.light .cl-internal-b3al4p {
   color: var(--text) !important;
 }
 
-.cl-button[data-variant="solid"] {
-  background: var(--accent) !important;
-  color: #fff !important;
+html.light .cl-formButtonPrimary {
+  background: var(--text) !important;
+  color: var(--bg) !important;
 }
