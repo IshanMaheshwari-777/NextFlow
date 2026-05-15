@@ -1,11 +1,12 @@
 "use client";
-import React, { memo } from "react";
+import React, { memo, useState, useEffect, useMemo } from "react";
 import { NodeProps } from "@xyflow/react";
 import BaseNode from "./BaseNode";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { Crop, Download, Maximize2 } from "lucide-react";
+import { Crop, Download, Maximize2, Clock } from "lucide-react";
+
 export default memo(function GenerateImageNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const { updateNodeData, cooldownEnd, startCooldown } = useWorkflowStore();
   const rawData = data as any;
   const connectedInputs: string[] = rawData.connectedInputs || [];
 
@@ -19,8 +20,39 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
     imageHeight: rawData.runOutput?.height || rawData.height
   };
 
+  // Cooldown logic
+  const [timeLeft, setTimeLeft] = useState(0);
+  const prevStatusRef = React.useRef(rawData.runStatus);
+  
+  useEffect(() => {
+    const checkCooldown = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((cooldownEnd - now) / 1000));
+      setTimeLeft(remaining);
+    };
+
+    checkCooldown();
+    const timer = setInterval(checkCooldown, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownEnd]);
+
+  // Trigger cooldown on successful generation ONLY if it transitioned from running
+  useEffect(() => {
+    if (rawData.runStatus === "success" && prevStatusRef.current === "running") {
+      const now = Date.now();
+      if (cooldownEnd < now) {
+        startCooldown(90);
+      }
+    }
+    prevStatusRef.current = rawData.runStatus;
+  }, [rawData.runStatus, cooldownEnd, startCooldown]);
+
+  const isCooldownActive = timeLeft > 0;
+
   const handleTriggerAction = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (isCooldownActive || d.isGenerating) return;
+
     // Clear all output data to ensure the skeleton shows up immediately
     updateNodeData(id, { 
       runStatus: "idle", 
@@ -29,6 +61,12 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
       runError: undefined
     });
     window.dispatchEvent(new CustomEvent("run-single-node", { detail: { nodeId: id } }));
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -51,17 +89,6 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
         {/* 1. Prompt textarea */}
         <div>
           <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">Prompt{connectedInputs.includes('prompt') && <span className="text-red-400 text-[9px]">← connected</span>}</label>
-        
-          {/* <p style={{fontSize:'9px',fontWeight:600,letterSpacing:'0.08em',
-            textTransform:'uppercase',color:'#555',marginBottom:'4px'}}>
-            Prompt
-            {connectedInputs.includes('prompt') && (
-              <span style={{marginLeft:'6px',fontSize:'9px',color:'#4f8cff',
-                fontWeight:400,textTransform:'none',letterSpacing:0}}>
-                ← connected
-              </span>
-            )}
-          </p> */}
           <textarea
             rows={2}
             className="node-input"
@@ -128,52 +155,11 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
                 style={{width:'100%',height:'140px',objectFit:'cover',display:'block'}}
               />
               
-              
               <div style={{
                 position:'absolute',bottom:0,left:0,right:0,
                 padding:'8px',display:'flex',gap:'4px',alignItems:'center',
                 background:'linear-gradient(transparent,rgba(0,0,0,0.75))',
-              }}>
-                {/* <button
-                  onClick={() => {
-                    fetch(d.generatedImageUrl)
-                      .then(r => r.blob())
-                      .then(blob => {
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = 'generated-image.png'
-                        a.click()
-                        URL.revokeObjectURL(url)
-                      })
-                  }}
-                  style={{display:'flex',alignItems:'center',gap:'3px',
-                    padding:'3px 7px',borderRadius:'4px',fontSize:'9px',
-                    background:'rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.15)',
-                    color:'#ddd',cursor:'pointer'}}
-                >
-                  ↓ Download
-                </button> */}
-                {/* <button
-                  onClick={() => window.open(d.generatedImageUrl, '_blank')}
-                  style={{display:'flex',alignItems:'center',gap:'3px',
-                    padding:'3px 7px',borderRadius:'4px',fontSize:'9px',
-                    background:'rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.15)',
-                    color:'#ddd',cursor:'pointer'}}
-                >
-                  ↗ Full size
-                </button> */}
-                {/* <button
-                  onClick={(e) => handleTriggerAction(e)}
-                  onMouseDown={e => e.stopPropagation()}
-                  style={{marginLeft:'auto',width:'22px',height:'22px',borderRadius:'4px',
-                    background:'rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.15)',
-                    color:'#aaa',cursor:'pointer',fontSize:'12px',display:'flex',
-                    alignItems:'center',justifyContent:'center'}}
-                >
-                  ↻
-                </button> */}
-              </div>
+              }} />
             </div>
             <div style={{ display: "flex", gap: 6, paddingTop: "6px" }}>
             <button type="button" onClick={() => {
@@ -222,22 +208,83 @@ export default memo(function GenerateImageNode({ id, data, selected }: NodeProps
           }} />
         )}
 
-        {/* 6. Error state */}
-        {d.generationError && !d.isGenerating && (
-          <div style={{padding:'8px',borderRadius:'6px',textAlign:'center',
-            background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.15)'}}>
-            <p style={{fontSize:'10px',color:'#f87171',marginBottom:'5px'}}>
-              Generation failed
+        {/* 6. Cooldown State (Added) */}
+        {isCooldownActive && !d.isGenerating && (
+          <div style={{
+            padding: '10px', borderRadius: '10px', background: 'rgba(244,63,94,0.03)',
+            border: '1px solid rgba(244,63,94,0.1)', display: 'flex', flexDirection: 'column',
+            gap: '8px', animation: 'fadeIn 0.3s ease'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '16px', height: '16px' }}>
+                  <svg width="16" height="16" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(244,63,94,0.1)" strokeWidth="2" />
+                    <circle cx="10" cy="10" r="8" fill="none" stroke="#f43f5e" strokeWidth="2" 
+                      strokeDasharray={50.24} 
+                      strokeDashoffset={50.24 * (1 - timeLeft / 90)} 
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dashoffset 1s linear', transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                    />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '10px', color: '#f43f5e', fontWeight: 600 }}>Generation cooldown</span>
+              </div>
+              <span style={{ fontSize: '10px', color: '#f43f5e', fontFamily: 'monospace', fontWeight: 700 }}>
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+            <p style={{ fontSize: '9px', color: '#666', margin: 0, fontStyle: 'italic' }}>
+              Free generation mode active — available shortly
             </p>
-            <button
-              onClick={(e) => handleTriggerAction(e)}
-              onMouseDown={e => e.stopPropagation()}
-              style={{fontSize:'9px',color:'#888',background:'transparent',
-                border:'1px solid rgba(255,255,255,0.1)',borderRadius:'4px',
-                padding:'2px 8px',cursor:'pointer'}}
-            >
-              Try again
-            </button>
+          </div>
+        )}
+
+        {/* 7. Action Buttons (Updated) */}
+        {!d.isGenerating && (
+          <div style={{ marginTop: '4px' }}>
+            {rawData.runStatus === "failed" ? (
+              <div style={{padding:'8px',borderRadius:'6px',textAlign:'center',
+                background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.15)'}}>
+                <p style={{fontSize:'10px',color:'#f87171',marginBottom:'5px'}}>
+                  Generation failed
+                </p>
+                <button
+                  onClick={(e) => handleTriggerAction(e)}
+                  onMouseDown={e => e.stopPropagation()}
+                  disabled={isCooldownActive}
+                  style={{
+                    fontSize:'9px', color: isCooldownActive ? '#444' : '#888', background:'transparent',
+                    border:'1px solid rgba(255,255,255,0.1)',borderRadius:'4px',
+                    padding:'2px 8px', cursor: isCooldownActive ? 'not-allowed' : 'pointer',
+                    opacity: isCooldownActive ? 0.5 : 1, transition: 'all 0.2s ease'
+                  }}
+                  title={isCooldownActive ? `Available in ${formatTime(timeLeft)}` : "Try again"}
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => handleTriggerAction(e)}
+                onMouseDown={e => e.stopPropagation()}
+                disabled={isCooldownActive}
+                style={{
+                  width: '100%', height: '32px', borderRadius: '8px',
+                  background: isCooldownActive ? 'rgba(255,255,255,0.03)' : 'rgba(244,63,94,0.1)',
+                  border: isCooldownActive ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(244,63,94,0.2)',
+                  color: isCooldownActive ? '#444' : '#f43f5e',
+                  fontSize: '11px', fontWeight: 600, cursor: isCooldownActive ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease', opacity: isCooldownActive ? 0.7 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                }}
+                title={isCooldownActive ? `Available in ${formatTime(timeLeft)}` : "Generate Image"}
+              >
+                {isCooldownActive ? <Clock style={{ width: 12, height: 12 }} /> : null}
+                {rawData.runOutput || rawData.imageUrl ? 'Regenerate' : 'Generate'}
+                {isCooldownActive && ` (${formatTime(timeLeft)})`}
+              </button>
+            )}
           </div>
         )}
       </div>

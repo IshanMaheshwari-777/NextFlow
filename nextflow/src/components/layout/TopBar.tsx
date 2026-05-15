@@ -13,7 +13,7 @@ type Props = {
 
 export default function TopBar({ allWorkflows }: Props) {
   const { 
-    workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, 
+    workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, cooldownEnd,
     setWorkflowName, setNodes, setEdges, saveSnapshot, exportAsJSON, importFromJSON, 
     resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, updateNodeData, undo, redo 
   } = useWorkflowStore();
@@ -92,6 +92,21 @@ export default function TopBar({ allWorkflows }: Props) {
     if (mode === "selected") {
       selectedNodeIds = nodes.filter((n: any) => n.selected).map(n => n.id);
       if (selectedNodeIds.length === 0) return;
+    }
+
+    // Cooldown check for generate-image nodes
+    const targetedImageNodes = nodes.filter(n => 
+      n.type === "generate-image" && 
+      (mode === "full" || selectedNodeIds.includes(n.id))
+    );
+
+    if (targetedImageNodes.length > 0 && cooldownEnd > Date.now()) {
+      const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      showToast(`Image generation cooldown active. Please wait ${timeStr}.`, "warning");
+      return;
     }
 
     // Reset all node states — do NOT set any node to isRunning here.

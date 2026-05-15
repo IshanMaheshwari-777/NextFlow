@@ -71,7 +71,7 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
             {error?.message || error?.toString() || "Unknown error"}
           </pre>
         </div>
-        <button onClick={() => { }} style={{ padding: "8px 16px", background: "#8b5cf6", color: "white", borderRadius: "8px", border: "none" }}>Try Again</button>
+        <button style={{ padding: "8px 16px", background: "#8b5cf6", color: "white", borderRadius: "8px", border: "none", cursor: "pointer" }}>Try Again</button>
       </div>
     );
   }

@@ -71,7 +71,7 @@ export const SAMPLE_NODES: AppNode[] = [
     position: { x: 720, y: 440 },
     data: {
       label: "Launch Post Writer",
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       system_prompt: "You are a senior social media manager. You will receive a product image from a demo video frame. Write a compelling LinkedIn launch post with a strong hook, key benefits, a call to action, and 3 hashtags. Maximum 150 words.",
       user_message: "Write a product launch post based on this product demo frame.",
       runStatus: "idle",

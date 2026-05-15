@@ -162,7 +162,7 @@ export default async function LandingPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontSize: 10, color: "#4a4a5e", textTransform: "uppercase", fontWeight: 700 }}>Model</span>
                 <div style={{ width: "100%", height: 28, background: "#0e0e14", borderRadius: 4, border: "1px solid #1c1c28", display: "flex", alignItems: "center", padding: "0 8px" }}>
-                  <span style={{ fontSize: 11, color: "#e4e4ed" }}>Llama 3.3 70B</span>
+                  <span style={{ fontSize: 11, color: "#e4e4ed" }}>Llama 3.1 8B</span>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

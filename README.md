@@ -56,7 +56,7 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 | **Database** | [PostgreSQL](https://postgresql.org) via [Neon](https://neon.tech) |
 | **ORM** | [Prisma](https://prisma.io) |
 | **Background Jobs** | [Trigger.dev v4](https://trigger.dev) |
-| **LLM** | [Groq API](https://groq.com) (Llama 3.3, Mixtral) |
+| **LLM** | [Groq API](https://groq.com) (Llama 3.1, Mixtral) |
 | **Image Generation** | [Pollinations.ai](https://pollinations.ai) |
 | **Image/Video** | [Transloadit](https://transloadit.com) |
 | **Icons** | [Lucide React](https://lucide.dev) |

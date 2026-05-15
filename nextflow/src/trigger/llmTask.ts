@@ -2,7 +2,6 @@ import { task, logger } from "@trigger.dev/sdk/v3";
 import Groq from "groq-sdk";
 
 const GROQ_MODELS: Record<string, string> = {
-  "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant": "llama-3.1-8b-instant",
   "meta-llama/llama-4-scout-17b-16e-instruct": "meta-llama/llama-4-scout-17b-16e-instruct",
 };

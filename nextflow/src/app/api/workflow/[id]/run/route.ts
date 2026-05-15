@@ -167,7 +167,7 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       const userMsg = inputs.user_message || inputs.output;
       const finalMsg = userMsg && typeof userMsg === "string" && userMsg.trim().length > 0 ? userMsg : "Hello";
       const hasImages = images && images.length > 0;
-      const baseModel = inputs.model || "llama-3.3-70b-versatile";
+      const baseModel = inputs.model || "llama-3.1-8b-instant";
       const model = hasImages ? "meta-llama/llama-4-scout-17b-16e-instruct" : baseModel;
       // Check cache
       const cKey = llmCacheKey(model, inputs.system_prompt, finalMsg, images);
@@ -243,7 +243,7 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
         
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+          const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
           const res = await fetch(url, { signal: controller.signal });
           clearTimeout(timeoutId);
           
@@ -297,7 +297,7 @@ CONSTRAINTS:
 
 Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt}"`;
       
-      const r = await triggerPolled("llm-node", { ...base, model: "llama-3.3-70b-versatile", system_prompt: systemPrompt, user_message: rawPrompt });
+      const r = await triggerPolled("llm-node", { ...base, model: "llama-3.1-8b-instant", system_prompt: systemPrompt, user_message: rawPrompt });
       if (!r.ok) throw new Error(`Prompt enhancement failed: ${r.error}`);
       
       let text = (r.output as any)?.text || "";

@@ -8,7 +8,7 @@ function defaultData(type: NodeType): Record<string, any> {
     case "text": return { label: "Text Node", text: "" };
     case "upload-image": return { label: "Upload Image" };
     case "upload-video": return { label: "Upload Video" };
-    case "llm": return { label: "LLM Node", model: "llama-3.3-70b-versatile", system_prompt: "", user_message: "" };
+    case "llm": return { label: "LLM Node", model: "llama-3.1-8b-instant", system_prompt: "", user_message: "" };
     case "crop-image": return { label: "Crop Image", x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
     case "extract-frame": return { label: "Extract Frame", timestamp: 0 };
     case "generate-image": return { label: "Generate Image", prompt: "", model: "flux", width: 768, height: 768, seed: Math.floor(Math.random() * 1000000) };
@@ -23,6 +23,7 @@ type State = {
   isRunning: boolean; currentRunId: string | null;
   runHistory: WorkflowRunRecord[]; selectedRunId: string | null;
   isLeftOpen: boolean; isRightOpen: boolean;
+  cooldownEnd: number;
   past: Array<{ nodes: AppNode[]; edges: AppEdge[] }>;
   future: Array<{ nodes: AppNode[]; edges: AppEdge[] }>;
   saveSnapshot: () => void;
@@ -50,6 +51,7 @@ type State = {
   setCurrentRunId: (id: string | null) => void;
   setIsLeftOpen: (v: boolean) => void;
   setIsRightOpen: (v: boolean) => void;
+  startCooldown: (durationSeconds: number) => void;
 };
 
 export const useWorkflowStore = create<State>()((set, get) => ({
@@ -162,7 +164,20 @@ export const useWorkflowStore = create<State>()((set, get) => ({
 
   loadWorkflow: ({ id, name, nodes, edges }) => set({ workflowId: id, workflowName: name, nodes, edges, past: [], future: [] }),
   exportAsJSON: () => { const { workflowId, workflowName, nodes, edges } = get(); return JSON.stringify({ id: workflowId, name: workflowName, nodes, edges }, null, 2); },
-  importFromJSON: (json) => { try { const p = JSON.parse(json); set({ workflowId: p.id || null, workflowName: p.name || "Imported", nodes: p.nodes || [], edges: p.edges || [] }); } catch { } },
+  importFromJSON: (json) => {
+    try {
+      const p = JSON.parse(json);
+      // We do NOT import the ID from the JSON because it likely doesn't exist in the local DB.
+      // This ensures we keep the current workspace's identity while importing its content.
+      set({ 
+        workflowName: p.name || get().workflowName || "Imported", 
+        nodes: p.nodes || [], 
+        edges: p.edges || [] 
+      });
+    } catch (e) {
+      console.error("Failed to import workflow JSON:", e);
+    }
+  },
   setRunHistory: (runs) => set({ runHistory: runs }),
   addRunToHistory: (run) => set(state => ({ runHistory: [run, ...state.runHistory] })),
   setSelectedRunId: (id) => set({ selectedRunId: id }),
@@ -170,4 +185,21 @@ export const useWorkflowStore = create<State>()((set, get) => ({
   setCurrentRunId: (id) => set({ currentRunId: id }),
   setIsLeftOpen: (v) => set({ isLeftOpen: v }),
   setIsRightOpen: (v) => set({ isRightOpen: v }),
+  cooldownEnd: typeof window !== "undefined" ? Number(localStorage.getItem("global-image-generation-cooldown") || 0) : 0,
+  startCooldown: (durationSeconds) => {
+    const end = Date.now() + durationSeconds * 1000;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("global-image-generation-cooldown", end.toString());
+    }
+    set({ cooldownEnd: end });
+  },
 }));
+
+// Cross-tab synchronization for cooldown
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "global-image-generation-cooldown") {
+      useWorkflowStore.setState({ cooldownEnd: Number(e.newValue || 0) });
+    }
+  });
+}

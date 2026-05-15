@@ -311,7 +311,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         </label>
         <select
           className="node-input"
-          value={d.model || "llama-3.3-70b-versatile"}
+          value={d.model || "llama-3.1-8b-instant"}
           onChange={(e) => updateNodeData(id, { model: e.target.value })}
         >
           {GROQ_MODELS.map((m) => (

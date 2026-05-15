@@ -15,7 +15,6 @@ export type NodeRunRecord = { id: string; nodeId: string; nodeType: string; node
 export type WorkflowRunRecord = { id: string; workflowId: string; status: string; runMode: string; selectedNodeIds: string[]; startedAt: string; completedAt?: string; duration?: number; error?: string; nodeRuns: NodeRunRecord[]; createdAt: string };
 
 export const GROQ_MODELS = [
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Versatile)" },
   { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Fast)" },
   { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout (Vision)" },
 ] as const;

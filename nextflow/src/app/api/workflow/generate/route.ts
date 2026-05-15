@@ -35,7 +35,7 @@ Do not include any markdown formatting, just the raw JSON object.`;
 
     // @ts-ignore
     const handle = await tasks.trigger("llm-node", {
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       system_prompt: systemPrompt,
       user_message: `Generate a workflow for: ${prompt}`,
     });
