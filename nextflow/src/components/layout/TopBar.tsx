@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Link from "next/link";
-import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History, Undo2, Redo2, AlertTriangle, XCircle } from "lucide-react";
+import { Play, Download, Upload, Loader2, Plus, ChevronDown, Pencil, Zap, History, Undo2, Redo2, AlertTriangle, XCircle, Sparkles } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,11 @@ type Props = {
 };
 
 export default function TopBar({ allWorkflows }: Props) {
-  const { workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, setWorkflowName, exportAsJSON, importFromJSON, resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, updateNodeData, undo, redo } = useWorkflowStore();
+  const { 
+    workflowId, workflowName, nodes, edges, isRunning, isRightOpen, past, future, 
+    setWorkflowName, setNodes, setEdges, saveSnapshot, exportAsJSON, importFromJSON, 
+    resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, updateNodeData, undo, redo 
+  } = useWorkflowStore();
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(workflowName);
@@ -38,14 +42,14 @@ export default function TopBar({ allWorkflows }: Props) {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    
+
     const handleRunSingle = (e: Event) => {
       const customEvent = e as CustomEvent;
       const { nodeId } = customEvent.detail;
       handleRun("single", [nodeId]);
     };
     window.addEventListener("run-single-node", handleRunSingle);
-    
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("run-single-node", handleRunSingle);
@@ -84,7 +88,7 @@ export default function TopBar({ allWorkflows }: Props) {
     setShowRunMenu(false);
 
     let selectedNodeIds = overrideNodeIds || [];
-    
+
     if (mode === "selected") {
       selectedNodeIds = nodes.filter((n: any) => n.selected).map(n => n.id);
       if (selectedNodeIds.length === 0) return;
@@ -111,7 +115,7 @@ export default function TopBar({ allWorkflows }: Props) {
       }
 
       const contentType = res.headers.get("content-type") || "";
-      
+
       if (contentType.includes("text/event-stream") && res.body) {
         // ─── SSE Streaming: update each node incrementally ───
         const reader = res.body.getReader();
@@ -224,10 +228,10 @@ export default function TopBar({ allWorkflows }: Props) {
       {/* Left */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         {/* Logo */}
-        <Link 
-          href="/dashboard" 
-          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textDecoration: "none", transition: "opacity 150ms ease" }} 
-          onMouseEnter={e => e.currentTarget.style.opacity = "0.8"} 
+        <Link
+          href="/dashboard"
+          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textDecoration: "none", transition: "opacity 150ms ease" }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
           onMouseLeave={e => e.currentTarget.style.opacity = "1"}
         >
           <div style={{
@@ -312,8 +316,8 @@ export default function TopBar({ allWorkflows }: Props) {
                 padding: "10px 12px", fontSize: 12, color: "#4a4a5e", background: "none", border: "none",
                 borderTop: "1px solid #1c1c28", cursor: "pointer",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; e.currentTarget.style.color = "#8b8b9e"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#4a4a5e"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; e.currentTarget.style.color = "#8b8b9e"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#4a4a5e"; }}
               >
                 <Plus style={{ width: 14, height: 14 }} />New Workflow
               </button>
@@ -324,6 +328,8 @@ export default function TopBar({ allWorkflows }: Props) {
         {saveStatus === "saved" && (
           <span style={{ fontSize: 12, color: "#4a4a5e", fontWeight: 500 }}>Saved</span>
         )}
+        {/* AI Workflow Generator */}
+        <AIWorkflowGenerator />
       </div>
 
       {/* Right */}
@@ -334,9 +340,9 @@ export default function TopBar({ allWorkflows }: Props) {
           width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
           color: "#4a4a5e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, cursor: "pointer",
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1c1c28"; }}
-        title="Export">
+          onMouseEnter={e => { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1c1c28"; }}
+          title="Export">
           <Download style={{ width: 16, height: 16 }} />
         </button>
 
@@ -344,33 +350,33 @@ export default function TopBar({ allWorkflows }: Props) {
           width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
           color: "#4a4a5e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, cursor: "pointer",
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1c1c28"; }}
-        title="Import">
+          onMouseEnter={e => { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1c1c28"; }}
+          title="Import">
           <Upload style={{ width: 16, height: 16 }} />
         </button>
 
         <button type="button" onClick={undo} disabled={past.length === 0} style={{
           width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-          color: past.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, 
+          color: past.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8,
           cursor: past.length === 0 ? "not-allowed" : "pointer",
           opacity: past.length === 0 ? 0.3 : 1,
         }}
-        onMouseEnter={e => { if (past.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
-        onMouseLeave={e => { if (past.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
-        title="Undo (Cmd+Z)">
+          onMouseEnter={e => { if (past.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
+          onMouseLeave={e => { if (past.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
+          title="Undo (Cmd+Z)">
           <Undo2 style={{ width: 16, height: 16 }} />
         </button>
 
         <button type="button" onClick={redo} disabled={future.length === 0} style={{
           width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-          color: future.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8, 
+          color: future.length === 0 ? "#4a4a5e" : "#8b8b9e", background: "#12121a", border: "1px solid #1c1c28", borderRadius: 8,
           cursor: future.length === 0 ? "not-allowed" : "pointer",
           opacity: future.length === 0 ? 0.3 : 1,
         }}
-        onMouseEnter={e => { if (future.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
-        onMouseLeave={e => { if (future.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
-        title="Redo (Cmd+Shift+Z)">
+          onMouseEnter={e => { if (future.length > 0) { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; } }}
+          onMouseLeave={e => { if (future.length > 0) { e.currentTarget.style.color = "#8b8b9e"; e.currentTarget.style.borderColor = "#1c1c28"; } }}
+          title="Redo (Cmd+Shift+Z)">
           <Redo2 style={{ width: 16, height: 16 }} />
         </button>
 
@@ -395,7 +401,7 @@ export default function TopBar({ allWorkflows }: Props) {
           >
             {isRunning ? <><Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "#a78bfa" }} />Running...</> : <><Play style={{ width: 14, height: 14, fill: "#fff" }} />Run</>}
           </button>
-          
+
           <button
             type="button"
             onClick={() => setShowRunMenu(!showRunMenu)}
@@ -433,14 +439,14 @@ export default function TopBar({ allWorkflows }: Props) {
                 <span>▶ Run Full Workflow</span>
                 <span style={{ opacity: 0.5, fontSize: 10 }}>⌘Enter</span>
               </button>
-              
+
               <button
                 onClick={() => handleRun("selected")}
                 disabled={nodes.filter((n: any) => n.selected).length === 0}
                 style={{
                   width: "100%", textAlign: "left", padding: "8px 14px", fontSize: 12,
-                  background: "transparent", color: nodes.filter((n: any) => n.selected).length === 0 ? "#555" : "#ccc", 
-                  border: "none", borderRadius: 4, 
+                  background: "transparent", color: nodes.filter((n: any) => n.selected).length === 0 ? "#555" : "#ccc",
+                  border: "none", borderRadius: 4,
                   cursor: nodes.filter((n: any) => n.selected).length === 0 ? "not-allowed" : "pointer"
                 }}
                 onMouseEnter={e => { if (nodes.filter((n: any) => n.selected).length > 0) e.currentTarget.style.background = "#1a1a1a"; }}
@@ -468,8 +474,8 @@ export default function TopBar({ allWorkflows }: Props) {
         )}
 
         <div style={{ marginLeft: 8 }}>
-          <UserButton appearance={{ 
-            baseTheme: dark, 
+          <UserButton appearance={{
+            baseTheme: dark,
             variables: {
               colorBackground: "#12121a",
               colorInputBackground: "#0c0c12",
@@ -478,11 +484,11 @@ export default function TopBar({ allWorkflows }: Props) {
               colorPrimary: "#8b5cf6",
               colorDanger: "#f87171",
             },
-            elements: { 
-              userButtonAvatarBox: "w-8 h-8", 
-              userButtonPopoverCard: "bg-[#12121a] border border-[#1c1c28]", 
-              userPreviewSecondaryIdentifier: "text-[#8b8b9e]" 
-            } 
+            elements: {
+              userButtonAvatarBox: "w-8 h-8",
+              userButtonPopoverCard: "bg-[#12121a] border border-[#1c1c28]",
+              userPreviewSecondaryIdentifier: "text-[#8b8b9e]"
+            }
           }} />
         </div>
       </div>
@@ -512,10 +518,149 @@ export default function TopBar({ allWorkflows }: Props) {
             onClick={() => { setToast(null); if (toastTimeout.current) clearTimeout(toastTimeout.current); }}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#4a4a5e", marginLeft: 4, display: "flex" }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+function AIWorkflowGenerator() {
+  const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { nodes, edges, setNodes, setEdges, saveSnapshot } = useWorkflowStore();
+
+  const handleGenerate = async () => {
+    if (!prompt.trim() || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/workflow/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.nodes && data.edges) {
+          saveSnapshot();
+          
+          // Safely remap IDs to avoid clashes with existing nodes
+          const idMap = new Map<string, string>();
+          const mappedNodes = data.nodes.map((n: any) => {
+            const newId = `${n.type}-${Math.random().toString(36).substr(2, 9)}`;
+            idMap.set(n.id, newId);
+            return { ...n, id: newId };
+          });
+          
+          const mappedEdges = data.edges.map((e: any) => ({
+            ...e,
+            id: `e-${idMap.get(e.source) || e.source}-${idMap.get(e.target) || e.target}`,
+            source: idMap.get(e.source) || e.source,
+            target: idMap.get(e.target) || e.target,
+          }));
+
+          setNodes([...nodes, ...mappedNodes]);
+          setEdges([...edges, ...mappedEdges]);
+          setOpen(false);
+          setPrompt("");
+        }
+      }
+    } catch (error) {
+      console.error("AI Generation failed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "6px 12px", borderRadius: 8,
+          background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)",
+          color: "#a78bfa", fontSize: 12, fontWeight: 600, cursor: "pointer",
+          transition: "all 150ms ease",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(139,92,246,0.15)"; e.currentTarget.style.borderColor = "rgba(139,92,246,0.3)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(139,92,246,0.1)"; e.currentTarget.style.borderColor = "rgba(139,92,246,0.2)"; }}
+      >
+        <Sparkles style={{ width: 14, height: 14 }} />
+        AI Generate
+      </button>
+
+      {open && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(5,5,10,0.8)", backdropFilter: "blur(12px)",
+          animation: "fadeIn 0.2s ease",
+        }} onClick={() => setOpen(false)}>
+          <div style={{
+            width: "min(480px, 90vw)", background: "#0e0e14", border: "1px solid #1c1c28",
+            borderRadius: 16, padding: "24px", boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            animation: "slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles style={{ width: 16, height: 16, color: "#a78bfa" }} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>Generate Workflow</h3>
+            </div>
+            
+            <p style={{ fontSize: 13, color: "#8b8b9e", marginBottom: 20, lineHeight: 1.5 }}>
+              Describe the workflow you want to build. AI will generate the necessary nodes and connections for you.
+            </p>
+
+            <textarea
+              autoFocus
+              placeholder="Build AI workflow with video frame extraction, image cropping, prompt enhancement, LLM processing, and image generation nodes."
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              style={{
+                width: "100%", minHeight: 120, background: "#0c0c12", border: "1px solid #1c1c28",
+                borderRadius: 12, padding: "14px", color: "#e4e4ed", fontSize: 14, outline: "none",
+                resize: "none", marginBottom: 24, transition: "border-color 200ms ease",
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"}
+              onBlur={e => e.currentTarget.style.borderColor = "#1c1c28"}
+            />
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: 10, background: "transparent",
+                  border: "1px solid #1c1c28", color: "#8b8b9e", fontSize: 14, fontWeight: 600,
+                  cursor: "pointer", transition: "all 150ms ease",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={loading || !prompt.trim()}
+                onClick={handleGenerate}
+                style={{
+                  flex: 2, padding: "12px", borderRadius: 10,
+                  background: loading || !prompt.trim() ? "#16161f" : "#8b5cf6",
+                  border: "none", color: "#fff", fontSize: 14, fontWeight: 700,
+                  cursor: loading || !prompt.trim() ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  boxShadow: loading || !prompt.trim() ? "none" : "0 8px 20px rgba(139,92,246,0.3)",
+                  transition: "all 200ms ease",
+                }}
+              >
+                {loading ? <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" /> : <Sparkles style={{ width: 16, height: 16 }} />}
+                {loading ? "Generating..." : "Generate Workflow"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

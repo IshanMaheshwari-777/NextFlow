@@ -4,6 +4,7 @@ import Groq from "groq-sdk";
 const GROQ_MODELS: Record<string, string> = {
   "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant": "llama-3.1-8b-instant",
+  "meta-llama/llama-4-scout-17b-16e-instruct": "meta-llama/llama-4-scout-17b-16e-instruct",
 };
 
 export const llmTask = task({
@@ -37,7 +38,7 @@ export const llmTask = task({
       messages.push({
         role: "user",
         content: [
-          ...images.map(url => ({
+          ...images.filter(url => typeof url === "string" && url.length > 0).map(url => ({
             type: "image_url",
             image_url: { url },
           })),
@@ -54,20 +55,21 @@ export const llmTask = task({
       });
     }
 
-    // REQUIRED DEBUGGING
-    console.log("FINAL MODEL:", finalModel);
-    console.log(JSON.stringify(messages, null, 2));
+    try {
+      const apiStart = Date.now();
+      const response = await groq.chat.completions.create({
+        model: finalModel,
+        messages,
+        max_tokens: 4096,
+      });
+      const apiTime = Date.now() - apiStart;
 
-    const apiStart = Date.now();
-    const response = await groq.chat.completions.create({
-      model: finalModel,
-      messages,
-      max_tokens: 4096,
-    });
-    const apiTime = Date.now() - apiStart;
-
-    const text = response.choices?.[0]?.message?.content || "";
-    logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: finalModel });
-    return { nodeId, success: true, text, model: finalModel, _timing: { apiMs: apiTime } };
+      const text = response.choices?.[0]?.message?.content || "";
+      logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: finalModel });
+      return { nodeId, success: true, text, model: finalModel, _timing: { apiMs: apiTime } };
+    } catch (err: any) {
+      logger.error("LLM task failed", { nodeId, error: err?.message, stack: err?.stack, model: finalModel });
+      throw new Error(`LLM API failed: ${err?.message || "Unknown error"}`);
+    }
   },
 });

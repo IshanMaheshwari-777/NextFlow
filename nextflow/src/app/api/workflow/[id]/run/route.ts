@@ -50,7 +50,7 @@ function topologicalSort(nodes: AppNode[], edges: AppEdge[]): AppNode[][] {
 function extractStringUrl(val: any): string {
   if (typeof val === "string") return val;
   if (val && typeof val === "object") {
-    return val.imageUrl || val.videoUrl || val.url || val.output || "";
+    return val.imageUrl || val.videoUrl || val.url || val.output || val.text || "";
   }
   return "";
 }
@@ -63,7 +63,7 @@ function resolveInputs(node: AppNode, edges: AppEdge[], outputs: Map<string, Rec
       const raw = srcOut[edge.sourceHandle] ?? srcOut.output;
       if (raw !== undefined) {
         // For URL-carrying handles, always flatten to string
-        if (["imageUrl", "image_url", "video_url", "user_message", "system_prompt"].includes(edge.targetHandle)) {
+        if (["imageUrl", "image_url", "video_url", "user_message", "system_prompt", "prompt"].includes(edge.targetHandle)) {
           const extracted = extractStringUrl(raw);
           if (extracted) {
             resolved[edge.targetHandle] = extracted;
@@ -71,7 +71,11 @@ function resolveInputs(node: AppNode, edges: AppEdge[], outputs: Map<string, Rec
           }
         } else if (edge.targetHandle === "images") {
           const url = extractStringUrl(raw);
-          resolved.images = [...(resolved.images || []), url || raw];
+          if (url) {
+            resolved.images = [...(resolved.images || []), url];
+          } else if (typeof raw === "string" && raw.startsWith("http")) {
+            resolved.images = [...(resolved.images || []), raw];
+          }
         } else {
           resolved[edge.targetHandle] = raw;
         }
@@ -202,6 +206,106 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       if (!o?.imageUrl) throw new Error("Frame extraction succeeded but no URL returned");
       return { output: o.imageUrl, imageUrl: o.imageUrl, width: o.width, height: o.height };
     }
+    case "generate-image": {
+      const rawPrompt = inputs.prompt || inputs.output || "";
+      if (!rawPrompt) throw new Error("No prompt provided for image generation.");
+      
+      // Sanitize prompt: remove newlines, multiple spaces, and limit length for stability
+      let sanitizedPrompt = rawPrompt.replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim();
+      if (sanitizedPrompt.length > 500) sanitizedPrompt = sanitizedPrompt.slice(0, 500) + "...";
+
+      const RATIO_DIMENSIONS: Record<string, {w:number,h:number}> = {
+        '1:1': {w:768,h:768},
+        '4:3': {w:768,h:576},
+        '16:9': {w:768,h:432},
+        '9:16': {w:432,h:768},
+      };
+      const {w, h} = RATIO_DIMENSIONS[inputs.aspectRatio || '1:1'];
+
+      const STYLE_SUFFIXES: Record<string,string> = {
+        'Default': '',
+        'Cinematic': ', cinematic lighting, film grain, anamorphic lens, movie still',
+        'Hyper-Realistic': ', hyperrealistic, photorealistic, DSLR, 8k, sharp focus',
+        'Anime': ', anime style, Studio Ghibli, detailed illustration, vibrant colors',
+        'Artistic': ', oil painting, artistic, textured, creative composition',
+        'Product Photography': ', product photography, white background, studio lighting, commercial',
+      };
+      const suffix = STYLE_SUFFIXES[inputs.style || 'Default'];
+      const finalPrompt = sanitizedPrompt + suffix;
+
+      const seed = Math.floor(Math.random() * 1000000) + Date.now() % 1000;
+      const model = inputs.model || "flux";
+
+      // Function to attempt generation/validation
+      const tryGenerate = async (p: string) => {
+        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&model=${model}&seed=${seed}&nologo=true&private=true`;
+        console.log(`[generate-image] Attempting URL: ${url}`);
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          
+          if (res.ok) return url;
+          console.warn(`[generate-image] Pollinations returned ${res.status} for prompt: ${p.slice(0, 50)}...`);
+          return null;
+        } catch (err) {
+          console.warn(`[generate-image] Fetch failed for prompt: ${p.slice(0, 50)}...`, err);
+          return null;
+        }
+      };
+
+      // Try with full prompt
+      let finalUrl = await tryGenerate(finalPrompt);
+      
+      // If failed, retry with simplified prompt (first 100 chars or just the core subject)
+      if (!finalUrl) {
+        console.log(`[generate-image] Retrying with simplified prompt...`);
+        const simplified = finalPrompt.split(",").slice(0, 3).join(",").slice(0, 150);
+        finalUrl = await tryGenerate(simplified);
+      }
+
+      if (!finalUrl) {
+        throw new Error("Generation servers are busy. Please try again with a simpler prompt.");
+      }
+
+      return { output: finalUrl, imageUrl: finalUrl, prompt: sanitizedPrompt, seed, width: w, height: h };
+    }
+    case "prompt-enhancer": {
+      const rawPrompt = inputs.prompt || inputs.output || "";
+      if (!rawPrompt) throw new Error("No prompt provided to enhance.");
+      const style = inputs.style || "Cinematic";
+      
+      const systemPrompt = `You are a professional prompt engineer for AI image generators (Stable Diffusion, Flux, Midjourney).
+Your task is to transform a raw user request into a CONCISE, powerful, one-line prompt.
+
+STRATEGY:
+- Subject: Clear and prominent
+- Environment: Specific setting and background
+- Lighting: Atmospheric lighting style
+- Style: ${style}
+- Composition: Camera angle and depth of field
+- Quality: Keywords like "photorealistic", "highly detailed", "8k"
+
+CONSTRAINTS:
+- Keep the result between 30 and 50 words.
+- Use comma-separated descriptive phrases.
+- DO NOT use full sentences or paragraphs.
+- DO NOT include explanations, quotes, or conversational text.
+- RETURN ONLY THE ENHANCED PROMPT.
+
+Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt}"`;
+      
+      const r = await triggerPolled("llm-node", { ...base, model: "llama-3.3-70b-versatile", system_prompt: systemPrompt, user_message: rawPrompt });
+      if (!r.ok) throw new Error(`Prompt enhancement failed: ${r.error}`);
+      
+      let text = (r.output as any)?.text || "";
+      // Post-process: remove quotes, newlines, and ensure one-liner
+      text = text.replace(/["']/g, "").replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim();
+      
+      return { output: text, text };
+    }
     default: throw new Error(`Unknown node type: ${node.type}`);
   }
 }
@@ -257,6 +361,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         send("run-start", { runId: run.id });
 
         const nodeOutputs = new Map<string, Record<string, any>>();
+        // Seed nodeOutputs with current data from the request body
+        // This allows single/partial runs to use results from previously executed nodes
+        for (const n of nodes) {
+          if (n.data?.runOutput) {
+            nodeOutputs.set(n.id, n.data.runOutput);
+          }
+        }
         const nodeResults: Record<string, any> = {};
         const layers = topologicalSort(activeNodes, edges || []);
         const startTime = Date.now();

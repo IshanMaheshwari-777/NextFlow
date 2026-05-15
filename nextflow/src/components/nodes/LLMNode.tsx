@@ -145,9 +145,9 @@ function LLMResponseRenderer({ text }: { text: string }) {
               border: `1px solid ${copied ? "rgba(52,211,153,0.2)" : "#1e1e2a"}`, cursor: "pointer", transition: "all 150ms ease",
             }}>
               {copied ? (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               ) : (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
               )}
               {copied ? "Copied" : "Copy"}
             </button>
@@ -156,7 +156,7 @@ function LLMResponseRenderer({ text }: { text: string }) {
               display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 500,
               background: "#16161f", color: "#8b8b9e", border: "1px solid #1e1e2a", cursor: "pointer", transition: "all 150ms ease",
             }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
               Expand
             </button>
           </div>
@@ -196,7 +196,7 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
   // Detect JSON
   let isJson = false;
   let jsonData: any = null;
-  try { jsonData = JSON.parse(text); isJson = true; } catch {}
+  try { jsonData = JSON.parse(text); isJson = true; } catch { }
 
   // Close on Escape
   React.useEffect(() => {
@@ -231,7 +231,7 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 20, height: 20, borderRadius: 5, background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
             </div>
             <span style={{ fontSize: 14, fontWeight: 600, color: "#e4e4ed" }}>LLM Response</span>
             <span style={{ fontSize: 11, color: "#4a4a5e", marginLeft: 4 }}>{text.length} chars</span>
@@ -244,9 +244,9 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
               border: `1px solid ${copied ? "rgba(52,211,153,0.25)" : "#1e1e2a"}`, cursor: "pointer", transition: "all 150ms ease",
             }}>
               {copied ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
               )}
               {copied ? "Copied!" : "Copy All"}
             </button>
@@ -255,10 +255,10 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
               width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
               background: "#16161f", border: "1px solid #1e1e2a", cursor: "pointer", color: "#4a4a5e", transition: "all 150ms ease",
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1e1e2a"; }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#e4e4ed"; e.currentTarget.style.borderColor = "#2e2e3e"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#4a4a5e"; e.currentTarget.style.borderColor = "#1e1e2a"; }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
         </div>

@@ -11,8 +11,10 @@ import UploadVideoNode from "@/components/nodes/UploadVideoNode";
 import LLMNode from "@/components/nodes/LLMNode";
 import CropImageNode from "@/components/nodes/CropImageNode";
 import ExtractFrameNode from "@/components/nodes/ExtractFrameNode";
+import GenerateImageNode from "@/components/nodes/GenerateImageNode";
+import PromptEnhancerNode from "@/components/nodes/PromptEnhancerNode";
 
-const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode };
+const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode };
 
 const defaultEdgeOptions = {
   type: "smoothstep",
@@ -91,13 +93,13 @@ export default function WorkflowCanvas() {
         defaultEdgeOptions={defaultEdgeOptions}
         proOptions={{ hideAttribution: true }}
       >
-  <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a1a" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a1a" />
         <Controls showInteractive={false} position="bottom-left" />
         <MiniMap
           position="bottom-right"
           style={{ background: "#111217", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12 }}
           maskColor="rgba(124,92,255,0.06)"
-          nodeColor={n => ({ text: "#6366f1", "upload-image": "#34D399", "upload-video": "#FBBF24", llm: "#7C5CFF", "crop-image": "#ef4444", "extract-frame": "#ec4899" } as any)[n.type || ""] || "#4E5264"}
+          nodeColor={n => ({ text: "#6366f1", "upload-image": "#34D399", "upload-video": "#FBBF24", llm: "#7C5CFF", "crop-image": "#ef4444", "extract-frame": "#ec4899", "generate-image": "#f43f5e", "prompt-enhancer": "#3b82f6" } as any)[n.type || ""] || "#4E5264"}
         />
       </ReactFlow>
 

@@ -67,8 +67,8 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
           <span style={{ color: "#8b8b9e", fontSize: 14, fontWeight: 500 }}>Dashboard</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <UserButton appearance={{ 
-            baseTheme: dark, 
+          <UserButton appearance={{
+            baseTheme: dark,
             variables: {
               colorBackground: "#12121a",
               colorInputBackground: "#0c0c12",
@@ -77,11 +77,11 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
               colorPrimary: "#8b5cf6",
               colorDanger: "#f87171",
             },
-            elements: { 
-              userButtonAvatarBox: "w-8 h-8", 
-              userButtonPopoverCard: "bg-[#12121a] border border-[#1c1c28]", 
-              userPreviewSecondaryIdentifier: "text-[#8b8b9e]" 
-            } 
+            elements: {
+              userButtonAvatarBox: "w-8 h-8",
+              userButtonPopoverCard: "bg-[#12121a] border border-[#1c1c28]",
+              userPreviewSecondaryIdentifier: "text-[#8b8b9e]"
+            }
           }} />
         </div>
       </div>
@@ -206,30 +206,30 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
                     boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
                     overflow: "hidden"
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = "#8b5cf6";
-                    e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.3)";
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = "#1c1c28";
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#8b5cf6";
+                      e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.3)";
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "#1c1c28";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
                   >
                     {/* TOP PREVIEW */}
-                    <div style={{ 
-                      height: 140, width: "100%", background: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)", 
+                    <div style={{
+                      height: 140, width: "100%", background: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)",
                       backgroundSize: "16px 16px", backgroundColor: "#0a0a0f",
                       borderBottom: "1px solid #1c1c28", display: "flex", alignItems: "center", justifyContent: "center"
                     }}>
-                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                         <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid #1c1c28", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366f1" }}/></div>
-                         <div style={{ width: 20, height: 1, background: "rgba(139,92,246,0.4)" }} />
-                         <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid rgba(139,92,246,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 12px rgba(139,92,246,0.2)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}/></div>
-                         <div style={{ width: 20, height: 1, background: "rgba(139,92,246,0.4)" }} />
-                         <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid #1c1c28", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#34d399" }}/></div>
-                       </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid #1c1c28", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366f1" }} /></div>
+                        <div style={{ width: 20, height: 1, background: "rgba(139,92,246,0.4)" }} />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid rgba(139,92,246,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 12px rgba(139,92,246,0.2)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }} /></div>
+                        <div style={{ width: 20, height: 1, background: "rgba(139,92,246,0.4)" }} />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0c0c12", border: "1px solid #1c1c28", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#34d399" }} /></div>
+                      </div>
                     </div>
 
                     {/* CARD CONTENT */}
@@ -274,35 +274,35 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
           background: "#0e0e14", borderLeft: "1px solid #1c1c28", width: 280,
           padding: 16, overflowY: "auto"
         }}>
-           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-             <h2 style={{ fontSize: 11, fontWeight: 700, color: "#4a4a5e", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Recent Activity</h2>
-           </div>
-           
-           {recentRuns.length === 0 ? (
-             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, opacity: 0.5 }}>
-               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#16161f", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-                 <Clock style={{ width: 20, height: 20, color: "#4a4a5e" }} />
-               </div>
-               <span style={{ fontSize: 12, color: "#4a4a5e" }}>No recent runs</span>
-             </div>
-           ) : (
-             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-               {recentRuns.map((run) => (
-                 <div key={run.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 8, background: "#12121a", border: "1px solid #1c1c28" }}>
-                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                     <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4ed" }}>{run.workflow?.name || "Workflow"}</span>
-                     {run.status === "success" && <CheckCircle2 style={{ width: 14, height: 14, color: "#34d399" }} />}
-                     {run.status === "failed" && <XCircle style={{ width: 14, height: 14, color: "#f87171" }} />}
-                     {run.status === "running" && <Loader2 style={{ width: 14, height: 14, color: "#8b5cf6" }} className="animate-spin" />}
-                   </div>
-                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, color: "#8b8b9e" }}>
-                     <span>{new Date(run.createdAt).toLocaleString()}</span>
-                     <span style={{ textTransform: "capitalize" }}>{run.status}</span>
-                   </div>
-                 </div>
-               ))}
-             </div>
-           )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <h2 style={{ fontSize: 11, fontWeight: 700, color: "#4a4a5e", textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>Recent Activity</h2>
+          </div>
+
+          {recentRuns.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, opacity: 0.5 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#16161f", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                <Clock style={{ width: 20, height: 20, color: "#4a4a5e" }} />
+              </div>
+              <span style={{ fontSize: 12, color: "#4a4a5e" }}>No recent runs</span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {recentRuns.map((run) => (
+                <div key={run.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 8, background: "#12121a", border: "1px solid #1c1c28" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4ed" }}>{run.workflow?.name || "Workflow"}</span>
+                    {run.status === "success" && <CheckCircle2 style={{ width: 14, height: 14, color: "#34d399" }} />}
+                    {run.status === "failed" && <XCircle style={{ width: 14, height: 14, color: "#f87171" }} />}
+                    {run.status === "running" && <Loader2 style={{ width: 14, height: 14, color: "#8b5cf6" }} className="animate-spin" />}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, color: "#8b8b9e" }}>
+                    <span>{new Date(run.createdAt).toLocaleString()}</span>
+                    <span style={{ textTransform: "capitalize" }}>{run.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

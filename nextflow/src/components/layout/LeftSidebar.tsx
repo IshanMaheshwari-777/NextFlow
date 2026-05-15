@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { SIDEBAR_NODES, NodeType } from "@/types";
-import { useWorkflowStore } from "@/store/workflowStore";
 import { useReactFlow } from "@xyflow/react";
 import { Search, ChevronsLeft, ChevronsRight } from "lucide-react";
 import * as Icons from "lucide-react";
+import { useWorkflowStore } from "@/store/workflowStore";
+import { SIDEBAR_NODES, NodeType } from "@/types";
 
 export default function LeftSidebar() {
   const { addNode, isLeftOpen, setIsLeftOpen } = useWorkflowStore();

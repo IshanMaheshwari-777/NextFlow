@@ -20,9 +20,9 @@ export default async function LandingPage() {
         background: "#0e0e14", borderBottom: "1px solid #1c1c28",
         userSelect: "none", flexShrink: 0,
       }}>
-        <Link 
-          href="/" 
-          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textDecoration: "none", transition: "opacity 150ms ease" }} 
+        <Link
+          href="/"
+          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textDecoration: "none", transition: "opacity 150ms ease" }}
         >
           <div style={{
             width: 32, height: 32, borderRadius: 8,
@@ -39,7 +39,7 @@ export default async function LandingPage() {
             <>
               <Link href="/sign-in" style={{ textDecoration: "none" }}>
                 <button style={{
-                  background: "transparent", color: "#e4e4ed", border: "none", 
+                  background: "transparent", color: "#e4e4ed", border: "none",
                   padding: "8px 16px", fontSize: 14, fontWeight: 500, cursor: "pointer",
                   borderRadius: 8, transition: "background 150ms ease"
                 }}>
@@ -48,7 +48,7 @@ export default async function LandingPage() {
               </Link>
               <Link href="/sign-up" style={{ textDecoration: "none" }}>
                 <button style={{
-                  background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)", 
+                  background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)",
                   padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer",
                   borderRadius: 8, boxShadow: "0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.03)",
                   transition: "all 150ms ease"
@@ -60,7 +60,7 @@ export default async function LandingPage() {
           ) : (
             <Link href="/dashboard" style={{ textDecoration: "none" }}>
               <button style={{
-                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)", 
+                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)",
                 padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer",
                 borderRadius: 8, boxShadow: "0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.03)",
                 transition: "all 150ms ease"
@@ -85,7 +85,7 @@ export default async function LandingPage() {
           {!userId ? (
             <Link href="/sign-up" style={{ textDecoration: "none" }}>
               <button style={{
-                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)", 
+                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)",
                 padding: "12px 32px", fontSize: 16, fontWeight: 600, cursor: "pointer",
                 borderRadius: 8, boxShadow: "0 0 30px rgba(139,92,246,0.2), inset 0 1px 0 rgba(255,255,255,0.05)",
                 transition: "all 150ms ease", display: "flex", alignItems: "center", gap: 8
@@ -96,7 +96,7 @@ export default async function LandingPage() {
           ) : (
             <Link href="/dashboard" style={{ textDecoration: "none" }}>
               <button style={{
-                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)", 
+                background: "#12121a", color: "#fff", border: "1px solid rgba(139,92,246,0.3)",
                 padding: "12px 32px", fontSize: 16, fontWeight: 600, cursor: "pointer",
                 borderRadius: 8, boxShadow: "0 0 30px rgba(139,92,246,0.2), inset 0 1px 0 rgba(255,255,255,0.05)",
                 transition: "all 150ms ease", display: "flex", alignItems: "center", gap: 8
@@ -118,15 +118,15 @@ export default async function LandingPage() {
         }}>
           {/* Top bar of the fake canvas */}
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 48, background: "rgba(14,14,20,0.8)", borderBottom: "1px solid #1c1c28", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", padding: "0 16px", justifyContent: "space-between", zIndex: 10 }}>
-             <div style={{ display: "flex", gap: 6 }}>
-               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
-               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
-               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
-             </div>
-             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#12121a", padding: "6px 12px", borderRadius: 6, border: "1px solid rgba(139,92,246,0.3)", boxShadow: "0 0 10px rgba(139,92,246,0.15)" }}>
-               <Play style={{ width: 12, height: 12, color: "#fff", fill: "#fff" }} />
-               <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Run Workflow</span>
-             </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a4a5e" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#12121a", padding: "6px 12px", borderRadius: 6, border: "1px solid rgba(139,92,246,0.3)", boxShadow: "0 0 10px rgba(139,92,246,0.15)" }}>
+              <Play style={{ width: 12, height: 12, color: "#fff", fill: "#fff" }} />
+              <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Run Workflow</span>
+            </div>
           </div>
 
           {/* Fake Edges */}
@@ -153,7 +153,7 @@ export default async function LandingPage() {
           <div style={{ position: "absolute", left: 440, top: 120, width: 200, background: "#0c0c12", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, boxShadow: "0 0 0 1px rgba(139,92,246,0.1), 0 8px 24px rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", zIndex: 2 }}>
             <div style={{ position: "absolute", left: -5, top: 100, width: 10, height: 10, background: "#12121a", border: "2px solid rgba(255,255,255,0.08)", borderRadius: "50%" }} />
             <div style={{ position: "absolute", right: -5, top: 100, width: 10, height: 10, background: "#12121a", border: "2px solid rgba(255,255,255,0.08)", borderRadius: "50%" }} />
-            
+
             <div style={{ padding: "8px 12px", borderBottom: "1px solid #1c1c28", display: "flex", alignItems: "center", gap: 8, background: "#12121a", borderRadius: "8px 8px 0 0" }}>
               <Sparkles style={{ width: 14, height: 14, color: "#8b5cf6" }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: "#e4e4ed" }}>Run LLM</span>

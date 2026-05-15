@@ -11,6 +11,8 @@ function defaultData(type: NodeType): Record<string, any> {
     case "llm": return { label: "LLM Node", model: "llama-3.3-70b-versatile", system_prompt: "", user_message: "" };
     case "crop-image": return { label: "Crop Image", x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
     case "extract-frame": return { label: "Extract Frame", timestamp: 0 };
+    case "generate-image": return { label: "Generate Image", prompt: "", model: "flux", width: 768, height: 768, seed: Math.floor(Math.random() * 1000000) };
+    case "prompt-enhancer": return { label: "Enhance Prompt", prompt: "", style: "realistic" };
     default: return { label: "Node" };
   }
 }
@@ -160,7 +162,7 @@ export const useWorkflowStore = create<State>()((set, get) => ({
 
   loadWorkflow: ({ id, name, nodes, edges }) => set({ workflowId: id, workflowName: name, nodes, edges, past: [], future: [] }),
   exportAsJSON: () => { const { workflowId, workflowName, nodes, edges } = get(); return JSON.stringify({ id: workflowId, name: workflowName, nodes, edges }, null, 2); },
-  importFromJSON: (json) => { try { const p = JSON.parse(json); set({ workflowId: p.id || null, workflowName: p.name || "Imported", nodes: p.nodes || [], edges: p.edges || [] }); } catch {} },
+  importFromJSON: (json) => { try { const p = JSON.parse(json); set({ workflowId: p.id || null, workflowName: p.name || "Imported", nodes: p.nodes || [], edges: p.edges || [] }); } catch { } },
   setRunHistory: (runs) => set({ runHistory: runs }),
   addRunToHistory: (run) => set(state => ({ runHistory: [run, ...state.runHistory] })),
   setSelectedRunId: (id) => set({ selectedRunId: id }),

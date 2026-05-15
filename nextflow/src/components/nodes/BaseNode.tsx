@@ -65,7 +65,7 @@ export default memo(function BaseNode({ id, type, label, accentColor, icon, isRu
           </div>
           <span style={{ fontSize: 12, fontWeight: 600, color: "#d4d4e0", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {isRunning && <Loader2 className="w-3.5 h-3.5 text-[#fbbf24] animate-spin" />}
           {!isRunning && runStatus === "success" && <CheckCircle2 style={{ width: 14, height: 14, color: "#34d399" }} />}
           {!isRunning && runStatus === "failed" && <XCircle style={{ width: 14, height: 14, color: "#f87171" }} />}

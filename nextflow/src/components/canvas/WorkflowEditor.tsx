@@ -48,7 +48,7 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
 
   const save = useCallback(async () => {
     if (!workflowId) return;
-    try { await fetch(`/api/workflow/${workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workflowName, nodes, edges }) }); } catch {}
+    try { await fetch(`/api/workflow/${workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workflowName, nodes, edges }) }); } catch { }
   }, [workflowId, workflowName, nodes, edges]);
 
   useEffect(() => {

@@ -34,7 +34,7 @@ export const SAMPLE_NODES: AppNode[] = [
     position: { x: 720, y: 60 },
     data: {
       label: "Product Copywriter",
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.3-8b-instant",
       system_prompt: "You are a world-class e-commerce copywriter. Based on the product image provided, write a compelling 3-sentence product description that highlights benefits, creates desire, and ends with a subtle call to action. Be specific and persuasive.",
       user_message: "Describe this product and write a marketing description.",
       runStatus: "idle",
