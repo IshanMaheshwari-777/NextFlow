@@ -33,7 +33,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
           <pre key={`code-${i}`} style={{
             background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
             padding: "8px 10px", margin: "6px 0", fontSize: 11, fontFamily: "'SF Mono', 'Fira Code', monospace",
-            color: "#a78bfa", overflowX: "auto", lineHeight: 1.5,
+            color: "var(--text)", overflowX: "auto", lineHeight: 1.5,
           }}>
             {codeLang && <span style={{ fontSize: 9, color: "var(--text-muted)", display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>{codeLang}</span>}
             {codeBuffer.join("\n")}
@@ -57,7 +57,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
     if (line.match(/^[\-\*]\s/)) {
       elements.push(
         <div key={i} style={{ display: "flex", gap: 6, paddingLeft: 4, margin: "2px 0" }}>
-          <span style={{ color: "#8b5cf6", fontSize: 10, marginTop: 2 }}>●</span>
+          <span style={{ color: "var(--text)", fontSize: 10, marginTop: 2 }}>●</span>
           <span style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{formatInline(line.slice(2))}</span>
         </div>
       );
@@ -93,8 +93,8 @@ function formatInline(text: string): React.ReactNode {
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     if (match[1]) parts.push(<strong key={match.index} style={{ color: "var(--text)", fontWeight: 600 }}>{match[2]}</strong>);
-    else if (match[3]) parts.push(<em key={match.index} style={{ color: "#a78bfa" }}>{match[4]}</em>);
-    else if (match[5]) parts.push(<code key={match.index} style={{ background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, color: "#a78bfa", fontFamily: "'SF Mono', monospace" }}>{match[6]}</code>);
+    else if (match[3]) parts.push(<em key={match.index} style={{ color: "var(--text)" }}>{match[4]}</em>);
+    else if (match[5]) parts.push(<code key={match.index} style={{ background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, color: "var(--text)", fontFamily: "'SF Mono', monospace" }}>{match[6]}</code>);
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
@@ -230,8 +230,8 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
           padding: "14px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 20, height: 20, borderRadius: 5, background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+            <div style={{ width: 20, height: 20, borderRadius: 5, background: "var(--border)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
             </div>
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>LLM Response</span>
             <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>{text.length} chars</span>
@@ -297,7 +297,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
       id={id}
       type="llm"
       label={d.label || "LLM Node"}
-      accentColor="#8b5cf6"
+      accentColor="var(--text)"
       icon={<Sparkles className="w-3.5 h-3.5" />}
       isRunning={d.isRunning}
       runStatus={d.runStatus}
@@ -327,7 +327,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
           System Prompt
           {connected.includes("system_prompt") && (
-            <span className="text-violet-400 text-[9px]">← connected</span>
+            <span className="text-[var(--text-secondary)] text-[9px]">← connected</span>
           )}
         </label>
         <textarea
@@ -347,7 +347,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
           User Message
           {connected.includes("user_message") && (
-            <span className="text-violet-400 text-[9px]">← connected</span>
+            <span className="text-[var(--text-secondary)] text-[9px]">← connected</span>
           )}
         </label>
         <textarea

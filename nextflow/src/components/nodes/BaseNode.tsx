@@ -20,7 +20,7 @@ export default memo(function BaseNode({ id, type, label, accentColor, icon, isRu
   const nodeBorder = selected
     ? "var(--text-muted)"
     : isRunning
-    ? "rgba(139,92,246,0.6)"
+    ? "var(--border-subtle)"
     : "var(--border)";
 
   return (
@@ -30,7 +30,7 @@ export default memo(function BaseNode({ id, type, label, accentColor, icon, isRu
         borderRadius: 12, border: `1px solid ${nodeBorder}`,
         background: nodeBg,
         boxShadow: selected
-          ? "0 0 0 2px rgba(139,92,246,0.15), 0 4px 20px rgba(0,0,0,0.5)"
+          ? "0 0 0 2px var(--accent-border), 0 4px 20px rgba(0,0,0,0.5)"
           : "0 2px 8px rgba(0,0,0,0.4)",
       }}
       onMouseEnter={() => setHovered(true)}

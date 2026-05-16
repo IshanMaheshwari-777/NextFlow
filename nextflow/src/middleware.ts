@@ -16,5 +16,9 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    // Skip _next/static, _next/image, and all files with extensions (images, fonts, etc.)
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\..*).*)",
+    "/(api|trpc)(.*)",
+  ],
 };

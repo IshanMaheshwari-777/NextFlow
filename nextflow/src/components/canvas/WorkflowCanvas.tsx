@@ -1,21 +1,23 @@
 "use client";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, lazy, Suspense } from "react";
 import { ReactFlow, Background, BackgroundVariant, MiniMap, type Connection, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { NodeType, AppNode, AppEdge } from "@/types";
 import { Plus, MousePointer2, Hand, Play, Trash2, Undo2, Keyboard } from "lucide-react";
 import TextNode from "@/components/nodes/TextNode";
-import UploadImageNode from "@/components/nodes/UploadImageNode";
-import UploadVideoNode from "@/components/nodes/UploadVideoNode";
-import LLMNode from "@/components/nodes/LLMNode";
-import CropImageNode from "@/components/nodes/CropImageNode";
-import ExtractFrameNode from "@/components/nodes/ExtractFrameNode";
-import GenerateImageNode from "@/components/nodes/GenerateImageNode";
-import PromptEnhancerNode from "@/components/nodes/PromptEnhancerNode";
+
+// Lazy-load heavy node components to reduce initial bundle
+const UploadImageNode = lazy(() => import("@/components/nodes/UploadImageNode"));
+const UploadVideoNode = lazy(() => import("@/components/nodes/UploadVideoNode"));
+const LLMNode = lazy(() => import("@/components/nodes/LLMNode"));
+const CropImageNode = lazy(() => import("@/components/nodes/CropImageNode"));
+const ExtractFrameNode = lazy(() => import("@/components/nodes/ExtractFrameNode"));
+const GenerateImageNode = lazy(() => import("@/components/nodes/GenerateImageNode"));
+const PromptEnhancerNode = lazy(() => import("@/components/nodes/PromptEnhancerNode"));
 
 const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode };
-const defaultEdgeOptions = { type: "smoothstep", animated: true, style: { stroke: "rgba(139,92,246,0.3)", strokeWidth: 2 } };
+const defaultEdgeOptions = { type: "smoothstep", animated: true, style: { stroke: "var(--border-subtle)", strokeWidth: 2 } };
 
 type CanvasMode = "select" | "pan";
 
@@ -60,7 +62,7 @@ export default function WorkflowCanvas({ onAddNode }: Props) {
     onAddNode();
   }, [onAddNode]);
 
-  const dotColor = "var(--text-dim)";
+  const dotColor = "var(--dot-color)";
 
   return (
     <div ref={wrapperRef} style={{ width: "100%", height: "100%", position: "relative", background: "var(--canvas-bg)" }} onDragOver={onDragOver} onDrop={onDrop} onDoubleClick={onDoubleClick}>
@@ -87,12 +89,12 @@ export default function WorkflowCanvas({ onAddNode }: Props) {
         selectionOnDrag={canvasMode === "select"}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={dotColor} />
+        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color={dotColor} />
         <MiniMap
           position="bottom-right"
           style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, bottom: 20, right: 20 }}
-          maskColor="rgba(139,92,246,0.06)"
-          nodeColor={n => ({ text: "#6366f1", "upload-image": "#34D399", "upload-video": "#FBBF24", llm: "#8b5cf6", "crop-image": "#ef4444", "extract-frame": "#ec4899", "generate-image": "#f43f5e", "prompt-enhancer": "#3b82f6" } as any)[n.type || ""] || "var(--text-muted)"}
+          maskColor="var(--border-subtle)"
+          nodeColor={() => "var(--text-muted)"}
         />
       </ReactFlow>
 
@@ -113,9 +115,9 @@ export default function WorkflowCanvas({ onAddNode }: Props) {
         ].map((btn, i) => (
           <button key={i} onClick={btn.action} title={btn.label} style={{
             width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            background: btn.active ? "var(--border)" : btn.accent ? "rgba(139,92,246,0.12)" : "transparent",
+            background: btn.active ? "var(--border)" : btn.accent ? "var(--text)" : "transparent",
             border: "none", cursor: "pointer",
-            color: btn.active ? "var(--text)" : btn.accent ? "#a78bfa" : "var(--text-muted)",
+            color: btn.active ? "var(--text)" : btn.accent ? "var(--bg)" : "var(--text-muted)",
             transition: "all 100ms",
           }}
             onMouseEnter={e => { if (!btn.active) e.currentTarget.style.background = "var(--nav-hover)"; }}

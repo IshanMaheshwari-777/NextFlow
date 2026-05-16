@@ -31,7 +31,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
           <pre key={`code-${i}`} style={{
             background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
             padding: "8px 10px", margin: "6px 0", fontSize: 11, fontFamily: "'SF Mono', 'Fira Code', monospace",
-            color: "#a78bfa", overflowX: "auto", lineHeight: 1.5,
+            color: "var(--text)", overflowX: "auto", lineHeight: 1.5,
           }}>
             {codeLang && <span style={{ fontSize: 9, color: "var(--text-muted)", display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>{codeLang}</span>}
             {codeBuffer.join("\n")}

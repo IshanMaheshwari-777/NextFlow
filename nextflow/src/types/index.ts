@@ -38,7 +38,7 @@ export const SIDEBAR_NODES = [
   { type: "text" as NodeType, label: "Text", description: "Simple text input", icon: "Type", color: "#6366f1" },
   { type: "upload-image" as NodeType, label: "Upload Image", description: "jpg, png, webp, gif", icon: "Image", color: "#10b981" },
   { type: "upload-video" as NodeType, label: "Upload Video", description: "mp4, mov, webm, mkv", icon: "Video", color: "#f59e0b" },
-  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (Llama / Scout Vision)", icon: "Sparkles", color: "#8b5cf6" },
+  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (Llama / Scout Vision)", icon: "Sparkles", color: "var(--text)" },
   { type: "crop-image" as NodeType, label: "Crop Image", description: "Trim to region", icon: "Crop", color: "#ef4444" },
   { type: "extract-frame" as NodeType, label: "Extract Frame", description: "Frame from video", icon: "Film", color: "#ec4899" },
   { type: "generate-image" as NodeType, label: "Generate Image", description: "Pollinations.ai / Flux", icon: "ImagePlus", color: "#f43f5e" },

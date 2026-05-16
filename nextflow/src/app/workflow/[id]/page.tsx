@@ -18,28 +18,30 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
   if (!userId) redirect("/sign-in");
 
   try {
-    const workflow = await withRetry(() =>
-      prisma.workflow.findFirst({
-        where: { id, userId: userId as string },
-        include: {
-          workflowRuns: {
-            orderBy: { createdAt: "desc" },
-            take: 50,
-            include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
+    // Fetch workflow data and sidebar list in parallel
+    const [workflow, allWorkflows] = await Promise.all([
+      withRetry(() =>
+        prisma.workflow.findFirst({
+          where: { id, userId: userId as string },
+          include: {
+            workflowRuns: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
+              include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
+            },
           },
-        },
-      })
-    );
+        })
+      ),
+      withRetry(() =>
+        prisma.workflow.findMany({
+          where: { userId: userId as string },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true, name: true, updatedAt: true },
+        })
+      ),
+    ]);
 
     if (!workflow) notFound();
-
-    const allWorkflows = await withRetry(() =>
-      prisma.workflow.findMany({
-        where: { userId: userId as string },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true, name: true, updatedAt: true },
-      })
-    );
 
     // CRITICAL FIX: Serialize Prisma output to plain objects to prevent "An error occurred in the Server Components render"
     const safeWorkflow = JSON.parse(JSON.stringify({

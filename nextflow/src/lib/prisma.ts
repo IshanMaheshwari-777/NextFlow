@@ -12,6 +12,9 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
+// Pre-warm the connection pool on cold start
+prisma.$connect().catch(() => {});
+
 /**
  * Retry wrapper for Prisma operations that may fail due to
  * Neon's aggressive idle connection termination.
@@ -33,7 +36,7 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T
         console.warn(`[prisma] Connection error (attempt ${attempt + 1}/${retries + 1}), retrying...`, error.message);
         // Disconnect to force a fresh connection on retry
         try { await prisma.$disconnect(); } catch {}
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
         continue;
       }
       throw error;

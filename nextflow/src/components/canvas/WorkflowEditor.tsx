@@ -52,7 +52,7 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
 
   useEffect(() => {
     if (saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(save, 2000);
+    saveRef.current = setTimeout(save, 3000);
     return () => { if (saveRef.current) clearTimeout(saveRef.current); };
   }, [nodes, edges, workflowName]);
 

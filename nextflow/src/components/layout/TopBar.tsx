@@ -168,8 +168,10 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
               onMouseEnter={e => (e.currentTarget.style.background = "var(--nav-hover)")}
               onMouseLeave={e => { if (!showDropdown) e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#8b5cf6,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Network size={12} color="#fff" />
+              <div style={{ width: 22, height: 22, borderRadius: 6, background: "var(--text)", color: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
               </div>
               {editingName ? (
                 <input
@@ -206,7 +208,7 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
                     <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
                     <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", padding: "4px 14px 2px", margin: 0 }}>Workspaces</p>
                     {allWorkflows.slice(0, 6).map(wf => (
-                      <button key={wf.id} onClick={() => { router.push(`/workflow/${wf.id}`); setShowDropdown(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "none", border: "none", cursor: "pointer", color: wf.id === workflowId ? "#a78bfa" : "var(--text-secondary)", fontSize: 12, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      <button key={wf.id} onClick={() => { router.push(`/workflow/${wf.id}`); setShowDropdown(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "none", border: "none", cursor: "pointer", color: wf.id === workflowId ? "var(--text)" : "var(--text-secondary)", fontSize: 12, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--nav-hover)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "none")}
                       >
@@ -241,8 +243,8 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
               disabled={isRunning || nodes.length === 0}
               style={{
                 display: "flex", alignItems: "center", gap: 6, padding: "0 14px",
-                height: 32, fontSize: 13, fontWeight: 600, color: "#fff",
-                background: isRunning ? "rgba(139,92,246,0.4)" : "linear-gradient(135deg,#8b5cf6,#7c3aed)",
+                height: 32, fontSize: 13, fontWeight: 600, color: "var(--bg)",
+                background: isRunning ? "var(--border)" : "var(--text)",
                 border: "none", borderRadius: "8px 0 0 8px",
                 cursor: isRunning || nodes.length === 0 ? "not-allowed" : "pointer",
                 opacity: nodes.length === 0 ? 0.5 : 1, transition: "all 150ms",
@@ -256,8 +258,8 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
               disabled={isRunning || nodes.length === 0}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: 24, height: 32, color: "#fff",
-                background: isRunning ? "rgba(139,92,246,0.4)" : "linear-gradient(135deg,#8b5cf6,#7c3aed)",
+                width: 24, height: 32, color: "var(--bg)",
+                background: isRunning ? "var(--border)" : "var(--text)",
                 border: "none", borderLeft: "1px solid var(--border)", borderRadius: "0 8px 8px 0",
                 cursor: isRunning || nodes.length === 0 ? "not-allowed" : "pointer", opacity: nodes.length === 0 ? 0.5 : 1,
               }}
@@ -327,9 +329,9 @@ function AIWorkflowGenerator() {
   };
   return (
     <>
-      <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)", color: "#a78bfa", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(139,92,246,0.14)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "rgba(139,92,246,0.08)"; }}
+      <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-hover)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; }}
       >
         <Sparkles size={12} /> AI Generate
       </button>
@@ -337,8 +339,8 @@ function AIWorkflowGenerator() {
         <div style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)" }} onClick={() => setOpen(false)}>
           <div style={{ width: "min(480px,90vw)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 24px 64px rgba(0,0,0,0.5)", animation: "slideUp 0.25s ease" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Sparkles size={16} color="#a78bfa" />
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={16} color="var(--bg)" />
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>Generate Workflow</h3>
             </div>
@@ -346,7 +348,7 @@ function AIWorkflowGenerator() {
             <textarea autoFocus placeholder="e.g. Build AI workflow with prompt enhancement, LLM processing, and image generation..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ width: "100%", minHeight: 110, background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, outline: "none", resize: "none", marginBottom: 20, fontFamily: "inherit", lineHeight: 1.5 }} />
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, borderRadius: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-              <button disabled={loading || !prompt.trim()} onClick={handleGenerate} style={{ flex: 2, padding: 10, borderRadius: 8, background: loading || !prompt.trim() ? "var(--surface-hover)" : "#8b5cf6", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: loading || !prompt.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button disabled={loading || !prompt.trim()} onClick={handleGenerate} style={{ flex: 2, padding: 10, borderRadius: 8, background: loading || !prompt.trim() ? "var(--surface-hover)" : "var(--text)", border: "none", color: "var(--bg)", fontSize: 13, fontWeight: 700, cursor: loading || !prompt.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={14} />}
                 {loading ? "Generating..." : "Generate Workflow"}
               </button>

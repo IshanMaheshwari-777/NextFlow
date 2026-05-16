@@ -69,7 +69,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
         onMouseLeave={e => (e.currentTarget.style.background = open ? "var(--nav-hover)" : "transparent")}
       >
         <div style={{
-          width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#8b5cf6,#a78bfa)",
+          width: 32, height: 32, borderRadius: "50%", background: "var(--text)",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0,
           overflow: "hidden",
@@ -122,10 +122,12 @@ function NavSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
       <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", padding: collapsed ? "14px 0" : "14px 12px", flexShrink: 0 }}>
         {!collapsed && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#8b5cf6,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Zap size={13} fill="#fff" color="#fff" />
+            <div style={{ width: 24, height: 24, borderRadius: 7, background: "var(--text)", color: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em" }}>NextFlow</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>NextFlow</span>
           </div>
         )}
         <button onClick={onToggle} className="ghost-btn" title={collapsed ? "Expand" : "Collapse"}>
@@ -188,7 +190,7 @@ function NavSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 
 function WorkflowCard({ wf, onDelete }: { wf: Workflow; onDelete: (id: string) => void }) {
   const [hover, setHover] = useState(false);
-  const nodeColors = ["#6366f1", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#ec4899", "#f43f5e", "#3b82f6"];
+  const nodeColors = ["#6366f1", "#10b981", "#f59e0b", "var(--text)", "#ef4444", "#ec4899", "#f43f5e", "#3b82f6"];
   const nodes = wf.nodes || [];
 
   return (
@@ -217,7 +219,7 @@ function WorkflowCard({ wf, onDelete }: { wf: Workflow; onDelete: (id: string) =
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: nodeColors[i % nodeColors.length] + "22", border: `1px solid ${nodeColors[i % nodeColors.length]}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: nodeColors[i % nodeColors.length] }} />
                 </div>
-                {i < 2 && <div style={{ width: 12, height: 1, background: "rgba(139,92,246,0.3)" }} />}
+                {i < 2 && <div style={{ width: 12, height: 1, background: "var(--border)" }} />}
               </div>
             ))}
           </div>
@@ -390,7 +392,7 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
               {/* Create blank */}
               <button onClick={handleCreate} disabled={isCreating} style={{ height: 240, borderRadius: 12, border: "1px dashed var(--border)", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, cursor: "pointer", transition: "all 180ms", color: "var(--text-muted)" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"; e.currentTarget.style.background = "rgba(139,92,246,0.04)"; e.currentTarget.style.color = "#a78bfa"; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--text)"; e.currentTarget.style.background = "var(--surface-hover)"; e.currentTarget.style.color = "#a78bfa"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
               >
                 <div style={{ width: 48, height: 48, borderRadius: "50%", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -406,10 +408,10 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
               <div style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" }}>
                 <div style={{ height: 140, background: "var(--canvas-bg)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", backgroundImage: "radial-gradient(circle,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "16px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {["#10b981","#8b5cf6","#f59e0b","#3b82f6"].map((c,i) => (
+                    {["#10b981","var(--text)","#f59e0b","#3b82f6"].map((c,i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ width: 28, height: 20, borderRadius: 5, background: c+"18", border: `1px solid ${c}30` }} />
-                        {i < 3 && <div style={{ width: 10, height: 1, background: "rgba(139,92,246,0.3)" }} />}
+                        {i < 3 && <div style={{ width: 10, height: 1, background: "var(--border)" }} />}
                       </div>
                     ))}
                   </div>
@@ -417,7 +419,7 @@ export default function DashboardClient({ workflows, recentRuns = [] }: { workfl
                 <div style={{ padding: 16 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Product Marketing Kit Generator</p>
                   <p style={{ margin: "6px 0 14px", fontSize: 12, color: "var(--text-muted)" }}>Parallel image and video processing with AI-generated copy</p>
-                  <button onClick={handleLoadSample} disabled={isCreating} style={{ width: "100%", padding: "8px", borderRadius: 8, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  <button onClick={handleLoadSample} disabled={isCreating} style={{ width: "100%", padding: "8px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                     {isCreating ? "Loading..." : "Launch Sample →"}
                   </button>
                 </div>

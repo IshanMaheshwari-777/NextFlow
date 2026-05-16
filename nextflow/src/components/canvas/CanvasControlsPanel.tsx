@@ -28,10 +28,10 @@ export default function CanvasControlsPanel() {
         disabled={isRunning || nodes.length === 0}
         onClick={handleRunClick}
         className={`pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-xl font-semibold text-xs shadow-lg transition-all ${isRunning
-            ? "bg-violet-600/40 text-violet-200 cursor-not-allowed border border-violet-500/20"
+            ? "bg-[var(--surface-hover)] text-[var(--text-muted)] cursor-not-allowed border-[var(--border)]"
             : nodes.length === 0
               ? "bg-zinc-800/60 text-zinc-600 cursor-not-allowed border border-zinc-700/30"
-              : "bg-violet-600 hover:bg-violet-500 text-white shadow-violet-500/25 hover:shadow-violet-500/40 border border-violet-400/30"
+              : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90 shadow-none border-none"
           }`}
         style={{
           boxShadow: isRunning ? "none" : "0 8px 20px rgba(124,92,255,0.3)",
