@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are a workflow automation expert. Generate a structured JSON workflow for a React Flow based application. 
 The workflow consists of nodes and edges.
-Available node types: 'text', 'upload-image', 'upload-video', 'llm', 'crop-image', 'extract-frame', 'generate-image', 'prompt-enhancer'.
+Available node types: 'text', 'upload-image', 'upload-video', 'llm', 'crop-image', 'extract-frame', 'generate-image', 'prompt-enhancer', 'video-enhance'.
 Each node has: id, type, position {x, y}, data {label}.
 Edges connect nodes: id, source, sourceHandle, target, targetHandle.
 Handles: 
@@ -27,6 +27,7 @@ Handles:
 - 'extract-frame': inputs [video_url (video)], outputs [output (image)]
 - 'generate-image': inputs [prompt (text)], outputs [output (image)]
 - 'prompt-enhancer': inputs [prompt (text)], outputs [output (text)]
+- 'video-enhance': inputs [video_url (video)], outputs [output (video)] — upscales resolution (720p/1080p/4K), denoises, sharpens, and enhances color using FFmpeg via Transloadit; connects to extract-frame or other video consumers
 
 Return ONLY a JSON object with 'nodes' and 'edges' arrays. 
 Layout nodes logically (e.g., 300px apart horizontally). 

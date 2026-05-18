@@ -1,4 +1,4 @@
-export type NodeType = "text" | "upload-image" | "upload-video" | "llm" | "crop-image" | "extract-frame" | "generate-image" | "prompt-enhancer";
+export type NodeType = "text" | "upload-image" | "upload-video" | "llm" | "crop-image" | "extract-frame" | "generate-image" | "prompt-enhancer" | "video-enhance";
 export type HandleType = "text" | "image" | "video" | "any";
 export type HandleDef = { id: string; label: string; type: HandleType; required?: boolean };
 
@@ -28,6 +28,7 @@ export const NODE_HANDLES: Record<NodeType, { inputs: HandleDef[]; outputs: Hand
   "extract-frame": { inputs: [{ id: "video_url", label: "Video", type: "video", required: true }], outputs: [{ id: "output", label: "Frame Image", type: "image" }] },
   "generate-image": { inputs: [{ id: "prompt", label: "Prompt", type: "text", required: true }], outputs: [{ id: "output", label: "Generated Image", type: "image" }] },
   "prompt-enhancer": { inputs: [{ id: "prompt", label: "Raw Prompt", type: "text", required: true }], outputs: [{ id: "output", label: "Enhanced Prompt", type: "text" }] },
+  "video-enhance": { inputs: [{ id: "video_url", label: "Video", type: "video", required: true }], outputs: [{ id: "output", label: "Enhanced Video", type: "video" }] },
 };
 
 export const HANDLE_COMPAT: Record<HandleType, HandleType[]> = {
@@ -42,5 +43,6 @@ export const SIDEBAR_NODES = [
   { type: "crop-image" as NodeType, label: "Crop Image", description: "Trim to region", icon: "Crop", color: "#ef4444" },
   { type: "extract-frame" as NodeType, label: "Extract Frame", description: "Frame from video", icon: "Film", color: "#ec4899" },
   { type: "generate-image" as NodeType, label: "Generate Image", description: "Pollinations.ai / Flux", icon: "ImagePlus", color: "#f43f5e" },
+  { type: "video-enhance" as NodeType, label: "Video Enhance", description: "Upscale & sharpen video", icon: "Wand2", color: "#06b6d4" },
   { type: "prompt-enhancer" as NodeType, label: "Enhance Prompt", description: "AI prompt engineering", icon: "Wand2", color: "#3b82f6" },
 ];

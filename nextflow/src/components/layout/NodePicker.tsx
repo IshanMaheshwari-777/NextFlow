@@ -10,7 +10,7 @@ const CATEGORIES: { label: string; types: NodeType[] }[] = [
   { label: "Text", types: ["text"] },
   { label: "AI", types: ["llm", "generate-image", "prompt-enhancer"] },
   { label: "Image", types: ["upload-image", "crop-image"] },
-  { label: "Video", types: ["upload-video", "extract-frame"] },
+  { label: "Video", types: ["upload-video", "extract-frame", "video-enhance"] },
 ];
 
 type Props = { open: boolean; onClose: () => void; position?: { x: number; y: number } | null };

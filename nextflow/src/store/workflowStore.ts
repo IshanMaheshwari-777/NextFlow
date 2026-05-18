@@ -13,6 +13,7 @@ function defaultData(type: NodeType): Record<string, any> {
     case "extract-frame": return { label: "Extract Frame", timestamp: 0 };
     case "generate-image": return { label: "Generate Image", prompt: "", model: "flux", width: 768, height: 768, seed: Math.floor(Math.random() * 1000000) };
     case "prompt-enhancer": return { label: "Enhance Prompt", prompt: "", style: "realistic" };
+    case "video-enhance": return { label: "Video Enhance", video_url: "", resolution: "1080p", strength: "medium" };
     default: return { label: "Node" };
   }
 }

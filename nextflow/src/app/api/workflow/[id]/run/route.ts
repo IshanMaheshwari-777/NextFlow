@@ -130,7 +130,7 @@ async function triggerPolledFallback(taskId: string, payload: any): Promise<any>
   return { ok: false, error: "POLLING_TIMEOUT" };
 }
 
-async function executeNode(node: AppNode, inputs: Record<string, any>, workflowRunId: string): Promise<Record<string, any>> {
+async function executeNode(node: AppNode, inputs: Record<string, any>, workflowRunId: string, edges: AppEdge[] = [], nodes: AppNode[] = []): Promise<Record<string, any>> {
   const base = { nodeId: node.id, workflowRunId };
   switch (node.type) {
     case "text": return { output: inputs.text || "" };
@@ -277,7 +277,37 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       if (!rawPrompt) throw new Error("No prompt provided to enhance.");
       const style = inputs.style || "Cinematic";
       
-      const systemPrompt = `You are a professional prompt engineer for AI image generators (Stable Diffusion, Flux, Midjourney).
+      // Determine what this node connects to downstream
+      const targetNodeIds = edges.filter(e => e.source === node.id).map(e => e.target);
+      const targetNodes = nodes.filter(n => targetNodeIds.includes(n.id));
+      const connectsToImage = targetNodes.some(n => n.type === "generate-image");
+      const connectsToVideo = false; // generate-video node removed
+      
+      let systemPrompt = "";
+      
+      if (connectsToVideo && !connectsToImage) {
+        systemPrompt = `You are a professional prompt engineer for AI video generators (Seedance, Sora, Runway).
+Your task is to transform a raw user request into a CONCISE, powerful, one-line prompt for video generation.
+
+STRATEGY:
+- Subject: Clear, prominent, and in motion
+- Action/Motion: What is happening? Describe the movement clearly (e.g. "camera panning", "character walking", "wind blowing")
+- Environment: Specific setting and background
+- Lighting: Atmospheric lighting style
+- Style: ${style}
+- Composition: Camera angle and depth of field
+- Quality: Keywords like "photorealistic", "highly detailed", "8k", "smooth motion", "cinematic video"
+
+CONSTRAINTS:
+- Keep the result between 30 and 60 words.
+- Use comma-separated descriptive phrases.
+- DO NOT use full sentences or paragraphs.
+- DO NOT include explanations, quotes, or conversational text.
+- RETURN ONLY THE ENHANCED PROMPT.
+
+Transform this into a detailed ${style} AI video generation prompt: "${rawPrompt}"`;
+      } else {
+        systemPrompt = `You are a professional prompt engineer for AI image generators (Stable Diffusion, Flux, Midjourney).
 Your task is to transform a raw user request into a CONCISE, powerful, one-line prompt.
 
 STRATEGY:
@@ -296,6 +326,7 @@ CONSTRAINTS:
 - RETURN ONLY THE ENHANCED PROMPT.
 
 Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt}"`;
+      }
       
       const r = await triggerPolled("llm-node", { ...base, model: "llama-3.1-8b-instant", system_prompt: systemPrompt, user_message: rawPrompt });
       if (!r.ok) throw new Error(`Prompt enhancement failed: ${r.error}`);
@@ -305,6 +336,20 @@ Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt
       text = text.replace(/["']/g, "").replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim();
       
       return { output: text, text };
+    }
+    case "video-enhance": {
+      const videoUrl = inputs.video_url || inputs.output || "";
+      if (!videoUrl) throw new Error("No video URL provided for Video Enhance node.");
+      const r = await triggerPolled("video-enhance-node", {
+        ...base,
+        video_url: videoUrl,
+        resolution: inputs.resolution || "1080p",
+        strength: inputs.strength || "medium",
+      });
+      if (!r.ok) throw new Error(`Video enhance failed: ${r.error}`);
+      const o = r.output as any;
+      if (!o?.videoUrl) throw new Error("Video enhance succeeded but no URL returned");
+      return { output: o.videoUrl, videoUrl: o.videoUrl };
     }
     default: throw new Error(`Unknown node type: ${node.type}`);
   }
@@ -385,7 +430,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             const nodeRun = await withRetry(() => prisma.nodeRun.create({ data: { workflowRunId: run.id, nodeId: node.id, nodeType: node.type, nodeLabel: node.data?.label, status: "running", startedAt: new Date() } }));
             try {
               const inputs = resolveInputs(node, edges || [], nodeOutputs);
-              const output = await executeNode(node, inputs, run.id);
+              const output = await executeNode(node, inputs, run.id, edges || [], activeNodes);
               const nodeDuration = Date.now() - nodeStart;
               console.log(`[perf] Node ${node.id} (${node.type}) completed in ${nodeDuration}ms`);
               nodeOutputs.set(node.id, output);

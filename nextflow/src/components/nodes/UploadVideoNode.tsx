@@ -66,7 +66,7 @@ export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) 
         <div className="space-y-1.5">
           {/* Video Player */}
           {videoSrc && (
-            <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a2a", background: "var(--bg)" }}>
+            <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)" }}>
               <video
                 src={videoSrc}
                 controls
@@ -75,20 +75,20 @@ export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) 
               />
             </div>
           )}
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg px-3 py-2 border border-[#2a2a2a]">
+          <div style={{ background: "var(--input-bg)", borderColor: "var(--border)" }} className="flex items-center gap-2 rounded-lg px-3 py-2 border">
             {uploading ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" /> : <Video className="w-4 h-4 text-amber-400 shrink-0" />}
-            <span className="text-[11px] text-zinc-300 truncate flex-1">{d.fileName}</span>
-            <button onClick={() => { updateNodeData(id, { fileData: undefined, fileName: undefined, mimeType: undefined, fileUrl: undefined, thumbnailUrl: undefined, previewUrl: undefined }); setError(null); }}><X className="w-3.5 h-3.5 text-zinc-600 hover:text-red-400" /></button>
+            <span style={{ color: "var(--text-secondary)" }} className="text-[11px] truncate flex-1">{d.fileName}</span>
+            <button onClick={() => { updateNodeData(id, { fileData: undefined, fileName: undefined, mimeType: undefined, fileUrl: undefined, thumbnailUrl: undefined, previewUrl: undefined }); setError(null); }}><X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
           </div>
           {uploading && <p className="text-[10px] text-amber-400">Uploading to CDN…</p>}
           {d.fileUrl && !uploading && <p className="text-[10px] text-amber-400">✓ Uploaded to CDN</p>}
           {error && <p className="text-[10px] text-red-400">{error}</p>}
         </div>
       ) : (
-        <div className="border-2 border-dashed border-[#2a2a2a] hover:border-amber-500/40 rounded-lg p-4 text-center cursor-pointer transition-colors" onClick={() => ref.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith("video/")) handleFile(f); }}>
-          <Upload className="w-4 h-4 text-zinc-600 mx-auto mb-1" />
-          <p className="text-[11px] text-zinc-500">Click or drag video</p>
-          <p className="text-[10px] text-zinc-700 mt-0.5">mp4, mov, webm, mkv</p>
+        <div style={{ borderColor: "var(--border-subtle)" }} className="border-2 border-dashed hover:border-amber-500/40 rounded-lg p-4 text-center cursor-pointer transition-colors" onClick={() => ref.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith("video/")) handleFile(f); }}>
+          <Upload className="w-4 h-4 mx-auto mb-1" style={{ color: "var(--text-muted)" }} />
+          <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>Click or drag video</p>
+          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)", opacity: 0.7 }}>mp4, mov, webm, mkv</p>
         </div>
       )}
     </BaseNode>

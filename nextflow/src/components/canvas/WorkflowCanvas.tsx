@@ -1,22 +1,21 @@
 "use client";
-import { useCallback, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { ReactFlow, Background, BackgroundVariant, MiniMap, type Connection, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { NodeType, AppNode, AppEdge } from "@/types";
 import { Plus, MousePointer2, Hand, Play, Trash2, Undo2, Keyboard } from "lucide-react";
 import TextNode from "@/components/nodes/TextNode";
+import UploadImageNode from "@/components/nodes/UploadImageNode";
+import UploadVideoNode from "@/components/nodes/UploadVideoNode";
+import LLMNode from "@/components/nodes/LLMNode";
+import CropImageNode from "@/components/nodes/CropImageNode";
+import ExtractFrameNode from "@/components/nodes/ExtractFrameNode";
+import GenerateImageNode from "@/components/nodes/GenerateImageNode";
+import PromptEnhancerNode from "@/components/nodes/PromptEnhancerNode";
+import VideoEnhanceNode from "@/components/nodes/VideoEnhanceNode";
 
-// Lazy-load heavy node components to reduce initial bundle
-const UploadImageNode = lazy(() => import("@/components/nodes/UploadImageNode"));
-const UploadVideoNode = lazy(() => import("@/components/nodes/UploadVideoNode"));
-const LLMNode = lazy(() => import("@/components/nodes/LLMNode"));
-const CropImageNode = lazy(() => import("@/components/nodes/CropImageNode"));
-const ExtractFrameNode = lazy(() => import("@/components/nodes/ExtractFrameNode"));
-const GenerateImageNode = lazy(() => import("@/components/nodes/GenerateImageNode"));
-const PromptEnhancerNode = lazy(() => import("@/components/nodes/PromptEnhancerNode"));
-
-const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode };
+const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode, "video-enhance": VideoEnhanceNode };
 const defaultEdgeOptions = { type: "smoothstep", animated: true, style: { stroke: "var(--border-subtle)", strokeWidth: 2 } };
 
 type CanvasMode = "select" | "pan";

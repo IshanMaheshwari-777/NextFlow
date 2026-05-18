@@ -60,6 +60,7 @@ export const llmTask = task({
         model: finalModel,
         messages,
         max_tokens: 4096,
+        // temperature:0,
       });
       const apiTime = Date.now() - apiStart;
 
