@@ -57,105 +57,97 @@ export default async function LandingPage() {
                 className="pointer-events-none absolute top-[60px] opacity-0 shadow-2xl transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100" 
                 style={{ 
                   left: "50%", transform: "translateX(-50%) translateY(8px)",
-                  width: "800px", backgroundColor: "#fff", color: "#000",
-                  padding: "24px", borderRadius: "16px", display: "flex", gap: "32px",
+                  width: "960px", backgroundColor: "rgba(9, 9, 11, 0.95)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", color: "#fff", border: "1px solid rgba(255, 255, 255, 0.1)",
+                  padding: "32px", borderRadius: "24px", display: "flex", gap: "40px",
                   boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)"
                 }}
               >
                 {/* Col 1 */}
-                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "20px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#a1a1aa", margin: 0 }}>Generate</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "24px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.4)", margin: 0 }}>Generate</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <ImageIcon size={14} /> AI Image Generation
+                      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <ImageIcon size={16} /> AI Image Generation
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Text to Image ›</span>
-                        <span style={{ cursor: "default" }}>Flux Models ›</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <Video size={14} /> AI Video Generation
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Text to Video ›</span>
-                        <span style={{ cursor: "default" }}>Seedance Models ›</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Text to Image <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Flux Models <span className="opacity-50">›</span></span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Col 2 */}
-                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "20px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#a1a1aa", margin: 0 }}>Edit & Process</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "24px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.4)", margin: 0 }}>Edit & Process</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <Scissors size={14} /> Media Processing
+                      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <Scissors size={16} /> Media Processing
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Crop Image ›</span>
-                        <span style={{ cursor: "default" }}>Extract Frame ›</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Crop Image <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Extract Frame <span className="opacity-50">›</span></span>
                       </div>
                     </div>
                     <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <Sparkles size={14} /> AI Enhancements
+                      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <Sparkles size={16} /> AI Enhancements
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Video Enhance ›</span>
-                        <span style={{ cursor: "default" }}>Upscale & Denoise ›</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Video Enhance <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Upscale & Denoise <span className="opacity-50">›</span></span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Col 3 */}
-                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "20px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#a1a1aa", margin: 0 }}>Logic</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: "24px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.4)", margin: 0 }}>Logic</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <Cpu size={14} /> AI Intelligence
+                      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <Cpu size={16} /> AI Intelligence
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Run LLM (Llama 3) ›</span>
-                        <span style={{ cursor: "default" }}>Prompt Engineering ›</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Run LLM (Llama 3) <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Prompt Engineering <span className="opacity-50">›</span></span>
                       </div>
                     </div>
                     <div>
-                      <div style={{ marginBottom: "6px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
-                        <LayoutDashboard size={14} /> Core
+                      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <LayoutDashboard size={16} /> Core
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingLeft: "22px", fontSize: "12px", color: "#71717a" }}>
-                        <span style={{ cursor: "default" }}>Text Input ›</span>
-                        <span style={{ cursor: "default" }}>Media Upload ›</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Text Input <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Media Upload <span className="opacity-50">›</span></span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Right Card */}
-                <div style={{ width: "220px", overflow: "hidden", borderRadius: "12px", backgroundColor: "#18181b", flexShrink: 0 }}>
+                <div style={{ width: "260px", overflow: "hidden", borderRadius: "16px", backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
                   <div style={{ display: "flex", height: "100%", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{ padding: "16px" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: "#fff" }}>
-                        <Zap size={11} fill="currentColor" /> NextFlow
+                    <div style={{ padding: "20px" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                        <Zap size={14} fill="currentColor" /> NextFlow
                       </span>
                     </div>
                     <div
                       style={{ 
-                        display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "20px",
-                        background: "linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%)", minHeight: "180px" 
+                        display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "24px",
+                        background: "linear-gradient(135deg, rgba(14,165,233,0.2) 0%, rgba(59,130,246,0.4) 100%)", minHeight: "180px",
+                        borderTop: "1px solid rgba(255,255,255,0.1)"
                       }}
                     >
-                      <p style={{ marginBottom: "4px", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.7)", margin: 0 }}>New Feature</p>
-                      <h4 style={{ marginBottom: "12px", fontSize: "16px", fontWeight: 600, lineHeight: 1.2, color: "#fff", margin: "4px 0 12px" }}>
+                      <p style={{ marginBottom: "6px", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.7)", margin: 0 }}>New Feature</p>
+                      <h4 style={{ marginBottom: "16px", fontSize: "18px", fontWeight: 600, lineHeight: 1.2, color: "#fff", margin: "4px 0 16px" }}>
                         AI Video Enhancement
                       </h4>
-                      <span style={{ width: "fit-content", cursor: "default", borderRadius: "6px", backgroundColor: "#fff", padding: "6px 12px", fontSize: "12px", fontWeight: 600, color: "#000" }}>
+                      <span className="hover:bg-white/90 transition-colors cursor-pointer" style={{ width: "fit-content", borderRadius: "8px", backgroundColor: "#fff", padding: "8px 16px", fontSize: "13px", fontWeight: 600, color: "#000" }}>
                         Try it out
                       </span>
                     </div>
