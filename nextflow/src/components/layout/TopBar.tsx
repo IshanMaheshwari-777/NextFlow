@@ -5,6 +5,7 @@ import { dark } from "@clerk/themes";
 import { useRouter } from "next/navigation";
 import { Play, Download, Upload, Loader2, ChevronDown, Undo2, Redo2, AlertTriangle, XCircle, Sparkles, Clock, Sun, Moon, ArrowLeft, Network } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { NODE_HANDLES, NodeType, HANDLE_COMPAT } from "@/types";
 
 type Props = { allWorkflows: { id: string; name: string; updatedAt: Date }[]; onHistoryOpen: () => void };
 
@@ -66,9 +67,19 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
       const ce = e as CustomEvent;
       handleRun("single", [ce.detail.nodeId]);
     };
+    const handleCanvasRun = (e: Event) => {
+      const ce = e as CustomEvent;
+      const mode = ce.detail?.mode || "full";
+      if (mode === "selected") {
+        handleRun("selected");
+      } else {
+        handleRun("full");
+      }
+    };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("run-single-node", handleRunSingle);
-    return () => { window.removeEventListener("keydown", handleKeyDown); window.removeEventListener("run-single-node", handleRunSingle); };
+    window.addEventListener("canvas-run-workflow", handleCanvasRun);
+    return () => { window.removeEventListener("keydown", handleKeyDown); window.removeEventListener("run-single-node", handleRunSingle); window.removeEventListener("canvas-run-workflow", handleCanvasRun); };
   }, [isRunning, workflowId, nodes, edges]);
 
   useEffect(() => {
@@ -319,9 +330,117 @@ function AIWorkflowGenerator() {
         if (data.nodes && data.edges) {
           saveSnapshot();
           const idMap = new Map<string, string>();
-          const mappedNodes = data.nodes.map((n: any) => { const newId = `${n.type}-${Math.random().toString(36).substr(2, 9)}`; idMap.set(n.id, newId); return { ...n, id: newId }; });
-          const mappedEdges = data.edges.map((e: any) => ({ ...e, id: `e-${idMap.get(e.source)||e.source}-${idMap.get(e.target)||e.target}`, source: idMap.get(e.source)||e.source, target: idMap.get(e.target)||e.target }));
-          setNodes([...nodes, ...mappedNodes]); setEdges([...edges, ...mappedEdges]);
+
+          // Utility: get default data for a node type
+          const getDefaults = (type: string): Record<string, any> => {
+            switch (type) {
+              case "text": return { label: "Text Node", text: "" };
+              case "upload-image": return { label: "Upload Image" };
+              case "upload-video": return { label: "Upload Video" };
+              case "llm": return { label: "LLM Node", model: "llama-3.1-8b-instant", system_prompt: "", user_message: "" };
+              case "crop-image": return { label: "Crop Image", x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
+              case "extract-frame": return { label: "Extract Frame", timestamp: 0 };
+              case "generate-image": return { label: "Generate Image", prompt: "", model: "flux", width: 768, height: 768, seed: Math.floor(Math.random() * 1000000) };
+              case "prompt-enhancer": return { label: "Enhance Prompt", prompt: "", style: "realistic" };
+              case "video-enhance": return { label: "Video Enhance", video_url: "", resolution: "1080p", strength: "medium" };
+              default: return { label: "Node" };
+            }
+          };
+
+          // Handle ID correction map for common LLM mistakes
+          const HANDLE_ALIASES: Record<string, string> = {
+            "image_url": "imageUrl", "image": "imageUrl", "input_image": "imageUrl",
+            "video": "video_url", "input_video": "video_url",
+            "input": "prompt", "text": "prompt", "input_text": "user_message",
+            "message": "user_message", "system": "system_prompt",
+            "out": "output", "result": "output",
+          };
+
+          // Step 1: Remap node IDs and merge with defaults
+          const validTypes = new Set(["text", "upload-image", "upload-video", "llm", "crop-image", "extract-frame", "generate-image", "prompt-enhancer", "video-enhance"]);
+          const mappedNodes = data.nodes
+            .filter((n: any) => validTypes.has(n.type))
+            .map((n: any) => {
+              const newId = `${n.type}-${Math.random().toString(36).substr(2, 9)}`;
+              idMap.set(n.id, newId);
+              const defaults = getDefaults(n.type);
+              return {
+                ...n,
+                id: newId,
+                data: {
+                  ...defaults,
+                  ...n.data,
+                  label: n.data?.label || defaults.label,
+                  runStatus: "idle",
+                  connectedInputs: [],
+                },
+              };
+            });
+
+          // Step 2: Build a set of valid node IDs for edge validation
+          const validNodeIds = new Set(mappedNodes.map((n: any) => n.id));
+
+          // Step 3: Validate/correct edges and add visual properties
+          const handleColors: Record<string, string> = { text: "#6366f1", image: "#10b981", video: "#f59e0b", any: "#94a3b8" };
+          const mappedEdges = data.edges
+            .map((e: any) => {
+              const newSource = idMap.get(e.source) || e.source;
+              const newTarget = idMap.get(e.target) || e.target;
+              // Skip edges with unmapped nodes
+              if (!validNodeIds.has(newSource) || !validNodeIds.has(newTarget)) return null;
+
+              // Fix handle IDs using alias map
+              let srcHandle = e.sourceHandle || "output";
+              let tgtHandle = e.targetHandle || "output";
+              srcHandle = HANDLE_ALIASES[srcHandle] || srcHandle;
+              tgtHandle = HANDLE_ALIASES[tgtHandle] || tgtHandle;
+
+              // Validate handles against NODE_HANDLES definitions
+              const srcNode = mappedNodes.find((n: any) => n.id === newSource);
+              const tgtNode = mappedNodes.find((n: any) => n.id === newTarget);
+              if (!srcNode || !tgtNode) return null;
+              const srcHandleDefs = NODE_HANDLES[srcNode.type as NodeType];
+              const tgtHandleDefs = NODE_HANDLES[tgtNode.type as NodeType];
+              if (!srcHandleDefs || !tgtHandleDefs) return null;
+
+              // Auto-correct: if sourceHandle doesn't exist, default to "output"
+              if (!srcHandleDefs.outputs.find((h: any) => h.id === srcHandle)) srcHandle = "output";
+              // Auto-correct: if targetHandle doesn't exist, pick the first compatible input
+              const tgtHandleDef = tgtHandleDefs.inputs.find((h: any) => h.id === tgtHandle);
+              if (!tgtHandleDef && tgtHandleDefs.inputs.length > 0) {
+                // Find the source output type
+                const srcType = srcHandleDefs.outputs.find((h: any) => h.id === srcHandle)?.type || "any";
+                // Pick first compatible input
+                const compatible = tgtHandleDefs.inputs.find((h: any) => HANDLE_COMPAT[srcType as keyof typeof HANDLE_COMPAT]?.includes(h.type));
+                tgtHandle = compatible?.id || tgtHandleDefs.inputs[0].id;
+              }
+
+              // Determine edge color from source output type
+              const srcOutDef = srcHandleDefs.outputs.find((h: any) => h.id === srcHandle);
+              const strokeColor = handleColors[srcOutDef?.type || "any"] || "#94a3b8";
+
+              return {
+                id: `e-${newSource}-${srcHandle}-${newTarget}-${tgtHandle}`,
+                source: newSource,
+                sourceHandle: srcHandle,
+                target: newTarget,
+                targetHandle: tgtHandle,
+                animated: true,
+                style: { stroke: strokeColor, strokeWidth: 2 },
+              };
+            })
+            .filter(Boolean);
+
+          // Step 4: Populate connectedInputs on target nodes
+          for (const edge of mappedEdges) {
+            const targetNode = mappedNodes.find((n: any) => n.id === edge.target);
+            if (targetNode && !targetNode.data.connectedInputs.includes(edge.targetHandle)) {
+              targetNode.data.connectedInputs.push(edge.targetHandle);
+            }
+          }
+
+          setNodes([...nodes, ...mappedNodes]);
+          setEdges([...edges, ...mappedEdges]);
           setOpen(false); setPrompt("");
         }
       }
