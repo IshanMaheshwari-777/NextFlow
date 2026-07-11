@@ -43,11 +43,14 @@ export default async function DashboardPage() {
         data: {
           userId: userId as string,
           name: "Product Marketing Kit Generator",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma's Json column type doesn't structurally match our node/edge shape
           nodes: SAMPLE_NODES as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           edges: SAMPLE_EDGES as any,
         },
       })
     );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allWorkflows = [{ id: sampleWorkflow.id, name: sampleWorkflow.name, updatedAt: sampleWorkflow.updatedAt, nodes: sampleWorkflow.nodes as any }];
   }
 

@@ -1,5 +1,6 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import Groq from "groq-sdk";
+import { getEnv } from "../lib/env";
 
 const GROQ_MODELS: Record<string, string> = {
   "llama-3.1-8b-instant": "llama-3.1-8b-instant",
@@ -12,17 +13,18 @@ export const llmTask = task({
   run: async (payload: { nodeId: string; workflowRunId: string; model: string; system_prompt?: string; user_message: string; images?: string[] }) => {
     const { nodeId, model, system_prompt, user_message, images = [] } = payload;
 
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = new Groq({ apiKey: getEnv().GROQ_API_KEY });
 
     const hasImages = images && images.length > 0;
-    const selectedModel = GROQ_MODELS[model] || model || "llama-3.1-8b-instant";
+    // Only ever pass an allowlisted model id to Groq — never the raw client-supplied string.
+    const selectedModel = GROQ_MODELS[model] || "llama-3.1-8b-instant";
     const finalModel = hasImages
       ? "meta-llama/llama-4-scout-17b-16e-instruct"
       : selectedModel;
 
     logger.info("LLM task started", { nodeId, model: finalModel, hasImages, imageCount: images.length });
 
-    let messages: any[] = [];
+    const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [];
     const systemPrompt = system_prompt;
     const userPrompt = user_message || "Describe this image in detail.";
 
@@ -38,11 +40,11 @@ export const llmTask = task({
         role: "user",
         content: [
           ...images.filter(url => typeof url === "string" && url.length > 0).map(url => ({
-            type: "image_url",
+            type: "image_url" as const,
             image_url: { url },
           })),
           {
-            type: "text",
+            type: "text" as const,
             text: userPrompt,
           },
         ],
@@ -67,9 +69,10 @@ export const llmTask = task({
       const text = response.choices?.[0]?.message?.content || "";
       logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: finalModel });
       return { nodeId, success: true, text, model: finalModel, _timing: { apiMs: apiTime } };
-    } catch (err: any) {
-      logger.error("LLM task failed", { nodeId, error: err?.message, stack: err?.stack, model: finalModel });
-      throw new Error(`LLM API failed: ${err?.message || "Unknown error"}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error("LLM task failed", { nodeId, error: message, stack: err instanceof Error ? err.stack : undefined, model: finalModel });
+      throw new Error(`LLM API failed: ${message}`);
     }
   },
 });

@@ -16,6 +16,9 @@ function ImagePreviewModal({ src, label, onClose }: { src: string; label: string
   return ReactDOM.createPortal(
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
       style={{
         position: "fixed", inset: 0, zIndex: 99999,
         background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
@@ -26,7 +29,7 @@ function ImagePreviewModal({ src, label, onClose }: { src: string; label: string
       <div onClick={e => e.stopPropagation()} style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh" }}>
         <img src={src} alt={label} style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 12, border: "1px solid var(--border)" }} />
         <button
-          type="button" onClick={onClose}
+          type="button" onClick={onClose} aria-label="Close preview"
           style={{
             position: "absolute", top: -12, right: -12,
             width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
@@ -44,7 +47,8 @@ function ImagePreviewModal({ src, label, onClose }: { src: string; label: string
 }
 
 export default memo(function ExtractFrameNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const d = data as any;
   const connected: string[] = d.connectedInputs || [];
   const isConnected = connected.includes("video_url");

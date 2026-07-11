@@ -4,10 +4,13 @@ import { useReactFlow } from "@xyflow/react";
 import { Search, ChevronsLeft, ChevronsRight } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useShallow } from "zustand/react/shallow";
 import { SIDEBAR_NODES, NodeType } from "@/types";
 
 export default function LeftSidebar() {
-  const { addNode, isLeftOpen, setIsLeftOpen } = useWorkflowStore();
+  const { addNode, isLeftOpen, setIsLeftOpen } = useWorkflowStore(
+    useShallow(s => ({ addNode: s.addNode, isLeftOpen: s.isLeftOpen, setIsLeftOpen: s.setIsLeftOpen }))
+  );
   const { getViewport } = useReactFlow();
   const [search, setSearch] = useState("");
 
@@ -41,6 +44,7 @@ export default function LeftSidebar() {
             onMouseEnter={e => { e.currentTarget.style.background = "var(--input-bg)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
             title="Expand panel"
+            aria-label="Expand node panel"
           >
             <ChevronsRight style={{ width: 16, height: 16 }} />
           </button>
@@ -61,6 +65,7 @@ export default function LeftSidebar() {
               onMouseEnter={e => { e.currentTarget.style.background = "var(--input-bg)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
               title="Collapse panel"
+              aria-label="Collapse node panel"
             >
               <ChevronsLeft style={{ width: 14, height: 14 }} />
             </button>

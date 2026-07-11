@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { Transloadit } from "transloadit";
-import { Readable } from "node:stream";
+import { tasks } from "@trigger.dev/sdk/v3";
 
 export const dynamic = "force-dynamic";
 
-// Allow up to 60s for video uploads
-export const maxDuration = 60;
+// Base64 is ~33% larger than the underlying binary; these caps land near 10MB / 50MB of real file data.
+const MAX_BASE64_LEN = { image: 14_000_000, video: 70_000_000 };
 
+/** Sniffs the first bytes against known image magic numbers instead of trusting the client-sent mimeType. */
+function looksLikeImage(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true; // JPEG
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true; // PNG
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return true; // GIF
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45) return true; // WEBP (RIFF....WEBP)
+  return false;
+}
+
+/**
+ * Kicks off the upload in the "upload-image-node" / "upload-video-node" Trigger.dev
+ * tasks and returns immediately — Transloadit encoding (especially video) can run well
+ * past Vercel's serverless timeout, so this route no longer blocks on it. The client
+ * polls GET /api/upload/status/[triggerRunId] for completion.
+ */
 export async function POST(req: NextRequest) {
   let userId: string | null = null;
   try {
@@ -18,91 +33,44 @@ export async function POST(req: NextRequest) {
   }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const start = Date.now();
+  let body: { fileData?: string; fileName?: string; mimeType?: string; type?: string };
   try {
-    const body = await req.json();
-    const { fileData, fileName, mimeType, type } = body;
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
+  }
 
-    if (!fileData || !fileName) {
-      return NextResponse.json({ error: "fileData and fileName are required" }, { status: 400 });
+  const { fileData, fileName, mimeType, type } = body;
+  if (!fileData || typeof fileData !== "string" || !fileName) {
+    return NextResponse.json({ error: "fileData and fileName are required" }, { status: 400 });
+  }
+
+  const isVideo = type === "video" || (typeof mimeType === "string" && mimeType.startsWith("video/"));
+  const limit = isVideo ? MAX_BASE64_LEN.video : MAX_BASE64_LEN.image;
+  if (fileData.length > limit) {
+    return NextResponse.json({ error: `File is too large (max ${isVideo ? "50MB" : "10MB"}).` }, { status: 413 });
+  }
+
+  // Verify the bytes actually look like an image before trusting the client's claim —
+  // video signatures are far more varied, so we defer that check to Transloadit itself,
+  // which will cleanly reject a mismatched file rather than silently mis-processing it.
+  if (!isVideo) {
+    const head = Buffer.from(fileData.slice(0, 64), "base64");
+    if (!looksLikeImage(head)) {
+      return NextResponse.json({ error: "File does not look like a valid image." }, { status: 400 });
     }
+  }
 
-    const client = new Transloadit({
-      authKey: process.env.TRANSLOADIT_AUTH_KEY!,
-      authSecret: process.env.TRANSLOADIT_AUTH_SECRET!,
+  try {
+    const handle = await tasks.trigger(isVideo ? "upload-video-node" : "upload-image-node", {
+      nodeId: "standalone-upload",
+      fileData,
+      fileName,
+      mimeType: mimeType || (isVideo ? "video/mp4" : "image/jpeg"),
     });
-
-    const isVideo = type === "video" || mimeType?.startsWith("video/");
-
-    // Build assembly steps based on file type
-    const steps: Record<string, any> = isVideo
-      ? {
-          stored: { robot: "/video/encode", use: ":original", preset: "empty", ffmpeg_stack: "v6.0.0" },
-          thumbnail: { robot: "/video/thumbs", use: ":original", count: 1, ffmpeg_stack: "v6.0.0" },
-        }
-      : {
-          optimized: { robot: "/image/optimize", use: ":original", progressive: true },
-          thumbnail: { robot: "/image/resize", use: ":original", width: 400, height: 400, resize_strategy: "fit", imagemagick_stack: "v3.0.0" },
-        };
-
-    const buf = Buffer.from(fileData, "base64");
-    const stream = Readable.from(buf);
-    const assembly = await client.createAssembly({
-      params: { steps },
-      uploads: { [fileName]: stream },
-    });
-
-    // Poll for completion
-    let delay = 500;
-    const maxWait = 120000;
-    const pollStart = Date.now();
-    let done: any;
-    while (Date.now() - pollStart < maxWait) {
-      const s = await client.getAssembly(assembly.assembly_id as string);
-      if (s.ok === "ASSEMBLY_COMPLETED") { done = s; break; }
-      if (s.error || s.ok === "ASSEMBLY_ABORTED") {
-        return NextResponse.json({ error: `Upload failed: ${s.error}` }, { status: 500 });
-      }
-      await new Promise(r => setTimeout(r, delay));
-      delay = Math.min(delay * 1.5, 4000);
-    }
-
-    if (!done) {
-      return NextResponse.json({ error: "Upload timed out" }, { status: 504 });
-    }
-
-    const elapsed = Date.now() - start;
-
-    if (isVideo) {
-      const main = (done.results?.stored || [])[0];
-      const thumb = (done.results?.thumbnail || [])[0];
-      if (!main) return NextResponse.json({ error: "No video result" }, { status: 500 });
-      const videoUrl = main.ssl_url || main.url;
-      return NextResponse.json({
-        success: true,
-        videoUrl,
-        thumbnailUrl: thumb?.ssl_url || thumb?.url || null,
-        duration: elapsed,
-      });
-    } else {
-      const main = (done.results?.optimized || [])[0];
-      const thumb = (done.results?.thumbnail || [])[0];
-      if (!main) return NextResponse.json({ error: "No image result" }, { status: 500 });
-      const imageUrl = main.ssl_url || main.url;
-      return NextResponse.json({
-        success: true,
-        imageUrl,
-        thumbnailUrl: thumb?.ssl_url || thumb?.url || null,
-        width: main.meta?.width || 0,
-        height: main.meta?.height || 0,
-        duration: elapsed,
-      });
-    }
-  } catch (err: any) {
-    console.error("[/api/upload] Error:", err?.message);
-    return NextResponse.json({
-      error: err?.message || "Upload failed",
-      duration: Date.now() - start,
-    }, { status: 500 });
+    return NextResponse.json({ triggerRunId: handle.id }, { status: 202 });
+  } catch (err) {
+    console.error("[/api/upload] Failed to enqueue upload:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Failed to start upload" }, { status: 502 });
   }
 }

@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
-import { History, X, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { History, X } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useShallow } from "zustand/react/shallow";
 import { formatDuration } from "@/lib/utils";
+import { useEscapeClose } from "@/lib/useEscapeClose";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -23,8 +25,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function RunHistoryPanel({ open, onClose }: Props) {
-  const { runHistory, selectedRunId, setSelectedRunId } = useWorkflowStore();
+  const { runHistory, selectedRunId, setSelectedRunId } = useWorkflowStore(
+    useShallow(s => ({ runHistory: s.runHistory, selectedRunId: s.selectedRunId, setSelectedRunId: s.setSelectedRunId }))
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
+  useEscapeClose(onClose, open);
 
   const displayId = activeId || selectedRunId || (runHistory.length > 0 ? runHistory[0].id : null);
   const activeRun = runHistory.find(r => r.id === displayId);
@@ -33,24 +38,29 @@ export default function RunHistoryPanel({ open, onClose }: Props) {
   return (
     <>
       {/* Backdrop */}
-      {open && <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 98, background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)" }} />}
+      {open && <div onClick={onClose} aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 98, background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)" }} />}
 
       {/* Panel */}
-      <div style={{
-        position: "fixed", top: 0, right: 0, width: 300, height: "100vh", zIndex: 99,
-        background: "var(--sidebar)", borderLeft: "1px solid var(--border)",
-        boxShadow: "-8px 0 32px rgba(0,0,0,0.4)",
-        display: "flex", flexDirection: "column",
-        transform: open ? "translateX(0)" : "translateX(100%)",
-        transition: "transform 220ms cubic-bezier(0.4,0,0.2,1)",
-      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Run history"
+        aria-hidden={!open}
+        style={{
+          position: "fixed", top: 0, right: 0, width: 300, height: "100vh", zIndex: 99,
+          background: "var(--sidebar)", borderLeft: "1px solid var(--border)",
+          boxShadow: "-8px 0 32px rgba(0,0,0,0.4)",
+          display: "flex", flexDirection: "column",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 220ms cubic-bezier(0.4,0,0.2,1)",
+        }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <History size={13} color="var(--text-muted)" />
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>Run History</span>
           </div>
-          <button onClick={onClose} className="ghost-btn" style={{ width: 26, height: 26 }}><X size={14} /></button>
+          <button onClick={onClose} className="ghost-btn" aria-label="Close run history" style={{ width: 26, height: 26 }}><X size={14} /></button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" }}>

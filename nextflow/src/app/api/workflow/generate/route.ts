@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,10 +27,23 @@ const HANDLE_ALIASES: Record<string, string> = {
   "out": "output", "result": "output", "text": "output",
 };
 
+// Shape of a node/edge as the LLM returns it in its raw JSON, before validation/correction below.
+type RawNode = { id: string; type: string; data?: { label?: string; connectedInputs?: string[]; [key: string]: unknown } };
+type RawEdge = { id?: string; source: string; target: string; sourceHandle?: string; targetHandle?: string } | null;
+type RawWorkflow = { nodes?: RawNode[]; edges?: RawEdge[] };
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rateLimit = await checkRateLimit("generate", userId);
+    if (!rateLimit.ok) {
+      return NextResponse.json(
+        { error: "You're generating workflows too quickly. Please wait a moment and try again." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+      );
+    }
 
     const { prompt } = await req.json();
     if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -70,7 +84,6 @@ EXAMPLE: A workflow that enhances a prompt and generates an image:
 
 Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no explanation.`;
 
-    // @ts-ignore
     const handle = await tasks.trigger("llm-node", {
       model: "llama-3.1-8b-instant",
       system_prompt: systemPrompt,
@@ -82,17 +95,17 @@ Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no expla
     while (Date.now() - start < maxWait) {
       const r = await runs.retrieve(handle.id);
       if (r.status === "COMPLETED") {
-        let text = (r.output as any).text || "";
+        let text = (r.output as { text?: string })?.text || "";
         // Clean markdown if present
         text = text.replace(/```json/g, "").replace(/```/g, "").trim();
         try {
-          const workflow = JSON.parse(text);
+          const workflow: RawWorkflow = JSON.parse(text);
 
           // Server-side validation and correction
           if (workflow.nodes && Array.isArray(workflow.nodes)) {
             // Validate node types
             const validTypes = new Set(Object.keys(VALID_HANDLES));
-            workflow.nodes = workflow.nodes.filter((n: any) => n.type && validTypes.has(n.type));
+            workflow.nodes = workflow.nodes.filter(n => n.type && validTypes.has(n.type));
 
             // Ensure each node has proper data
             for (const node of workflow.nodes) {
@@ -103,11 +116,12 @@ Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no expla
             }
           }
 
+          const nodes = workflow.nodes || [];
           if (workflow.edges && Array.isArray(workflow.edges)) {
-            const nodeIds = new Set((workflow.nodes || []).map((n: any) => n.id));
-            workflow.edges = workflow.edges
-              .map((e: any) => {
-                if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) return null;
+            const nodeIds = new Set(nodes.map(n => n.id));
+            const cleanedEdges: NonNullable<RawEdge>[] = workflow.edges
+              .map(e => {
+                if (!e || !nodeIds.has(e.source) || !nodeIds.has(e.target)) return null;
                 // Fix source handle — always "output"
                 e.sourceHandle = "output";
                 // Fix target handle via aliases
@@ -115,28 +129,29 @@ Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no expla
                   e.targetHandle = HANDLE_ALIASES[e.targetHandle];
                 }
                 // Validate target handle exists for the target node type
-                const targetNode = workflow.nodes.find((n: any) => n.id === e.target);
+                const targetNode = nodes.find(n => n.id === e.target);
                 if (targetNode) {
                   const validInputs = VALID_HANDLES[targetNode.type]?.inputs || [];
-                  if (validInputs.length > 0 && !validInputs.includes(e.targetHandle)) {
+                  if (validInputs.length > 0 && e.targetHandle && !validInputs.includes(e.targetHandle)) {
                     e.targetHandle = validInputs[0]; // Default to first valid input
                   }
                 }
                 return e;
               })
-              .filter(Boolean);
+              .filter((e): e is NonNullable<RawEdge> => e !== null);
+            workflow.edges = cleanedEdges;
 
             // Populate connectedInputs on nodes
-            for (const edge of workflow.edges) {
-              const targetNode = workflow.nodes.find((n: any) => n.id === edge.target);
-              if (targetNode && !targetNode.data.connectedInputs.includes(edge.targetHandle)) {
-                targetNode.data.connectedInputs.push(edge.targetHandle);
+            for (const edge of cleanedEdges) {
+              const targetNode = nodes.find(n => n.id === edge.target);
+              if (targetNode?.data && edge.targetHandle && !targetNode.data.connectedInputs?.includes(edge.targetHandle)) {
+                targetNode.data.connectedInputs = [...(targetNode.data.connectedInputs || []), edge.targetHandle];
               }
             }
           }
 
           return NextResponse.json(workflow);
-        } catch (e) {
+        } catch {
           console.error("Failed to parse AI workflow output:", text);
           return NextResponse.json({ error: "AI generated invalid workflow format" }, { status: 500 });
         }
@@ -148,8 +163,9 @@ Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no expla
     }
 
     return NextResponse.json({ error: "Generation timed out" }, { status: 504 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[API/Workflow/Generate] Error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

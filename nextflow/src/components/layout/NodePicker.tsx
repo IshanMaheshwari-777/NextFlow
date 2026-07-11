@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { SIDEBAR_NODES, NodeType } from "@/types";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useReactFlow } from "@xyflow/react";
@@ -16,13 +16,15 @@ const CATEGORIES: { label: string; types: NodeType[] }[] = [
 type Props = { open: boolean; onClose: () => void; position?: { x: number; y: number } | null };
 
 export default function NodePicker({ open, onClose, position }: Props) {
-  const { addNode } = useWorkflowStore();
+  const addNode = useWorkflowStore(s => s.addNode);
   const { screenToFlowPosition } = useReactFlow();
   const [search, setSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Resets the search box each time the picker reopens — deliberate, not a stale-closure bug.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) { setSearch(""); setTimeout(() => inputRef.current?.focus(), 50); }
   }, [open]);
 
@@ -109,7 +111,8 @@ export default function NodePicker({ open, onClose, position }: Props) {
 
 function PickerItem({ node, onAdd }: { node: typeof SIDEBAR_NODES[number]; onAdd: (t: NodeType) => void }) {
   const [hovered, setHovered] = useState(false);
-  const Icon = (Icons as any)[node.icon] as any;
+  const iconMap = Icons as unknown as Record<string, ComponentType<{ style?: CSSProperties }>>;
+  const Icon = iconMap[node.icon];
   return (
     <button type="button" onClick={() => onAdd(node.type)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", background: hovered ? "var(--border-subtle)" : "transparent", border: "none", borderRadius: 8, cursor: "pointer", textAlign: "left", transition: "background 80ms" }}

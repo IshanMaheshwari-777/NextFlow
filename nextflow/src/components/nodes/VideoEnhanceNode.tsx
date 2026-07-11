@@ -26,7 +26,8 @@ function pillStyle(active: boolean) {
 }
 
 export default memo(function VideoEnhanceNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const d = data as any;
   const connected: string[] = d.connectedInputs || [];
   const isConnected = connected.includes("video_url");

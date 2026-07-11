@@ -1,12 +1,16 @@
 "use client";
-import React, { memo, useState, useEffect, useMemo } from "react";
+import React, { memo, useState, useEffect } from "react";
 import { NodeProps } from "@xyflow/react";
 import BaseNode from "./BaseNode";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { Crop, Download, Maximize2, Clock } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
+import { Download, Maximize2, Clock } from "lucide-react";
 
 export default memo(function GenerateImageNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData, cooldownEnd, startCooldown } = useWorkflowStore();
+  const { updateNodeData, cooldownEnd, startCooldown } = useWorkflowStore(
+    useShallow(s => ({ updateNodeData: s.updateNodeData, cooldownEnd: s.cooldownEnd, startCooldown: s.startCooldown }))
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const rawData = data as any;
   const connectedInputs: string[] = rawData.connectedInputs || [];
 

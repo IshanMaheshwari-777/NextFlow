@@ -2,16 +2,20 @@ export type NodeType = "text" | "upload-image" | "upload-video" | "llm" | "crop-
 export type HandleType = "text" | "image" | "video" | "any";
 export type HandleDef = { id: string; label: string; type: HandleType; required?: boolean };
 
+// A node's `data` is genuinely heterogeneous across node types (a text node's data looks
+// nothing like a crop node's) — typed loosely by design rather than forcing a discriminated
+// union through every call site that touches it.
 export type AppNode = {
   selected?: boolean;
   id: string; type: NodeType;
   position: { x: number; y: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Record<string, any>;
 };
-export type AppEdge = { id: string; source: string; sourceHandle: string; target: string; targetHandle: string; animated?: boolean; style?: Record<string, any> };
+export type AppEdge = { id: string; source: string; sourceHandle: string; target: string; targetHandle: string; animated?: boolean; style?: Record<string, string | number> };
 
 export type RunStatus = "running" | "success" | "failed" | "partial";
-export type NodeRunRecord = { id: string; nodeId: string; nodeType: string; nodeLabel?: string; status: string; startedAt: string; completedAt?: string; duration?: number; inputs?: any; output?: any; error?: string };
+export type NodeRunRecord = { id: string; nodeId: string; nodeType: string; nodeLabel?: string; status: string; startedAt: string; completedAt?: string; duration?: number; inputs?: unknown; output?: unknown; error?: string };
 export type WorkflowRunRecord = { id: string; workflowId: string; status: string; runMode: string; selectedNodeIds: string[]; startedAt: string; completedAt?: string; duration?: number; error?: string; nodeRuns: NodeRunRecord[]; createdAt: string };
 
 export const GROQ_MODELS = [

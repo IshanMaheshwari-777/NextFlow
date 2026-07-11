@@ -3,8 +3,9 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { ReactFlow, Background, BackgroundVariant, MiniMap, type Connection, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useShallow } from "zustand/react/shallow";
 import { NodeType, AppNode, AppEdge } from "@/types";
-import { Plus, MousePointer2, Hand, Play, Trash2, Undo2, Keyboard } from "lucide-react";
+import { Plus, MousePointer2, Hand, Play, Trash2, Undo2 } from "lucide-react";
 import TextNode from "@/components/nodes/TextNode";
 import UploadImageNode from "@/components/nodes/UploadImageNode";
 import UploadVideoNode from "@/components/nodes/UploadVideoNode";
@@ -23,7 +24,9 @@ type CanvasMode = "select" | "pan";
 type Props = { onAddNode: () => void };
 
 export default function WorkflowCanvas({ onAddNode }: Props) {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, deleteNode, undo, redo, past, future } = useWorkflowStore();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, deleteNode, undo, redo, past, future } = useWorkflowStore(
+    useShallow(s => ({ nodes: s.nodes, edges: s.edges, onNodesChange: s.onNodesChange, onEdgesChange: s.onEdgesChange, onConnect: s.onConnect, addNode: s.addNode, deleteNode: s.deleteNode, undo: s.undo, redo: s.redo, past: s.past, future: s.future }))
+  );
   const wrapperRef = useRef<HTMLDivElement>(null);
   const rfRef = useRef<ReactFlowInstance<AppNode, AppEdge> | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ id: string; top: number; left: number } | null>(null);
@@ -157,9 +160,9 @@ export default function WorkflowCanvas({ onAddNode }: Props) {
 
       {/* Shortcuts modal */}
       {showShortcuts && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowShortcuts(false)}>
+        <div role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowShortcuts(false)}>
           <div style={{ width: 380, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 24px 48px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Keyboard Shortcuts</h3>
+            <h3 id="shortcuts-title" style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Keyboard Shortcuts</h3>
             {[["N", "Open node picker"],["⌘ Enter", "Run full workflow"],["⌘ Z", "Undo"],["⌘ ⇧ Z", "Redo"],["Delete / ⌫", "Delete selected node"],["Esc", "Close panels"]].map(([key, desc]) => (
               <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{desc}</span>

@@ -2,11 +2,14 @@
 import React from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useShallow } from "zustand/react/shallow";
 import { ZoomIn, ZoomOut, Maximize, Undo2, Redo2, Play } from "lucide-react";
 
 export default function CanvasControlsPanel() {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const { past, future, undo, redo, nodes, isRunning } = useWorkflowStore();
+  const { past, future, undo, redo, nodes, isRunning } = useWorkflowStore(
+    useShallow(s => ({ past: s.past, future: s.future, undo: s.undo, redo: s.redo, nodes: s.nodes, isRunning: s.isRunning }))
+  );
 
   const selectedCount = nodes.filter(n => n.selected).length;
 
@@ -48,6 +51,7 @@ export default function CanvasControlsPanel() {
           onClick={() => zoomIn({ duration: 200 })}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8b8b9e] hover:text-[#e4e4ed] hover:bg-[#1a1a26] transition-colors"
           title="Zoom In"
+          aria-label="Zoom in"
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </button>
@@ -56,6 +60,7 @@ export default function CanvasControlsPanel() {
           onClick={() => zoomOut({ duration: 200 })}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8b8b9e] hover:text-[#e4e4ed] hover:bg-[#1a1a26] transition-colors"
           title="Zoom Out"
+          aria-label="Zoom out"
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </button>
@@ -64,6 +69,7 @@ export default function CanvasControlsPanel() {
           onClick={() => fitView({ padding: 0.2, duration: 300 })}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8b8b9e] hover:text-[#e4e4ed] hover:bg-[#1a1a26] transition-colors"
           title="Fit View"
+          aria-label="Fit view to screen"
         >
           <Maximize className="w-3.5 h-3.5" />
         </button>
@@ -79,6 +85,7 @@ export default function CanvasControlsPanel() {
               : "text-[#8b8b9e] hover:text-[#e4e4ed] hover:bg-[#1a1a26]"
             }`}
           title="Undo"
+          aria-label="Undo"
         >
           <Undo2 className="w-3.5 h-3.5" />
         </button>
@@ -91,6 +98,7 @@ export default function CanvasControlsPanel() {
               : "text-[#8b8b9e] hover:text-[#e4e4ed] hover:bg-[#1a1a26]"
             }`}
           title="Redo"
+          aria-label="Redo"
         >
           <Redo2 className="w-3.5 h-3.5" />
         </button>

@@ -4,12 +4,14 @@ import { NodeProps } from "@xyflow/react";
 import { Video, Upload, X, Loader2 } from "lucide-react";
 import BaseNode from "./BaseNode";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { uploadFile } from "@/lib/uploadClient";
 
 export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const d = data as any;
 
   const handleFile = async (file: File) => {
@@ -27,18 +29,7 @@ export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) 
         reader.readAsDataURL(file);
       });
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileData: b64, fileName: file.name, mimeType: file.type, type: "video" }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "Upload failed");
-        throw new Error(errText);
-      }
-
-      const result = await res.json();
+      const result = await uploadFile(b64, file.name, file.type, "video");
       if (!result.videoUrl) throw new Error("No URL returned from upload");
 
       updateNodeData(id, {
@@ -46,10 +37,10 @@ export default memo(function UploadVideoNode({ id, data, selected }: NodeProps) 
         thumbnailUrl: result.thumbnailUrl,
         fileData: undefined,
       });
-      console.log(`[UploadVideoNode] ${id} uploaded: ${result.videoUrl.slice(0, 60)}... (${result.duration}ms)`);
-    } catch (err: any) {
+      console.log(`[UploadVideoNode] ${id} uploaded: ${result.videoUrl.slice(0, 60)}...`);
+    } catch (err) {
       console.error("[UploadVideoNode] Upload failed:", err);
-      setError(err?.message || "Upload failed");
+      setError(err instanceof Error ? err.message : "Upload failed");
       updateNodeData(id, { fileData: undefined, fileUrl: undefined });
     } finally {
       setUploading(false);

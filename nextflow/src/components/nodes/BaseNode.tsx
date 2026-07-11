@@ -1,5 +1,5 @@
 "use client";
-import { memo, ReactNode, useEffect, useState } from "react";
+import { memo, ReactNode, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_HANDLES, NodeType, HandleType } from "@/types";
@@ -11,7 +11,7 @@ const HANDLE_COLORS: Record<HandleType, string> = { text: "#818cf8", image: "#34
 type Props = { id: string; type: NodeType; label: string; accentColor: string; icon: ReactNode; isRunning?: boolean; runStatus?: string; runError?: string; children: ReactNode; selected?: boolean };
 
 export default memo(function BaseNode({ id, type, label, accentColor, icon, isRunning, runStatus, runError, children, selected }: Props) {
-  const { deleteNode } = useWorkflowStore();
+  const deleteNode = useWorkflowStore(s => s.deleteNode);
   const handles = NODE_HANDLES[type];
   const [hovered, setHovered] = useState(false);
   
@@ -56,7 +56,7 @@ export default memo(function BaseNode({ id, type, label, accentColor, icon, isRu
           {!isRunning && runStatus === "success" && <CheckCircle2 style={{ width: 14, height: 14, color: "#34d399" }} />}
           {!isRunning && runStatus === "failed" && <XCircle style={{ width: 14, height: 14, color: "#f87171" }} />}
           {/* Delete button — visible only on hover */}
-          <button type="button" onClick={() => deleteNode(id)} style={{
+          <button type="button" onClick={() => deleteNode(id)} aria-label={`Delete ${label} node`} style={{
             width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
             borderRadius: 5, background: "transparent", border: "none", cursor: "pointer",
             color: "var(--text-muted)",

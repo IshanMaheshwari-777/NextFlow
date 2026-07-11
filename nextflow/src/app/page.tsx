@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { Zap, ChevronDown, Image as ImageIcon, Video, Scissors, Sparkles, Cpu, LayoutDashboard } from "lucide-react";
+import { Zap, ChevronDown, Image as ImageIcon, Scissors, Sparkles, Cpu, LayoutDashboard } from "lucide-react";
 
 export default async function LandingPage() {
   const { userId } = await auth();

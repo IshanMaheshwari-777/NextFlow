@@ -1,14 +1,13 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ComponentType, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { Plus, ChevronLeft, ChevronRight, Home, Network, Image as ImageIcon, Video, MoreHorizontal, Trash2, LogOut, Settings, Zap } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Home, Network, Trash2, LogOut, Settings } from "lucide-react";
 import * as Icons from "lucide-react";
 import { SIDEBAR_NODES } from "@/types";
-import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sampleWorkflow";
 
-type Workflow = { id: string; name: string; updatedAt: string | Date; nodes?: any[] };
+type Workflow = { id: string; name: string; updatedAt: string | Date; nodes?: unknown[] };
 
 const NAV_ITEMS = [
   { icon: Home, label: "Home", href: "/dashboard", active: true },
@@ -18,7 +17,10 @@ const TABS = ["Projects", "Apps", "Examples", "Templates"];
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
+  // Server can't know the persisted theme; correct the icon once after mount rather
+  // than risk a hydration mismatch by reading `document` during the first render.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(!document.documentElement.classList.contains("light"));
   }, []);
   const toggle = () => {
@@ -158,7 +160,8 @@ function NavSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         {!collapsed && <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", padding: "12px 8px 4px", margin: 0 }}>Tools</p>}
         <div style={{ height: collapsed ? 12 : 0 }} />
         {SIDEBAR_NODES.map((node) => {
-          const Icon = (Icons as any)[node.icon] as any;
+          const iconMap = Icons as unknown as Record<string, ComponentType<{ style?: CSSProperties }>>;
+          const Icon = iconMap[node.icon];
           return (
             <div key={node.label} title={collapsed ? node.label : undefined} style={{
               display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 8, marginBottom: 2,
@@ -214,7 +217,7 @@ function WorkflowCard({ wf, onDelete }: { wf: Workflow; onDelete: (id: string) =
           backgroundSize: "16px 16px", position: "relative",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {(nodes.length > 0 ? nodes.slice(0, 4) : [1, 2, 3]).map((n: any, i: number) => (
+            {(nodes.length > 0 ? nodes.slice(0, 4) : [1, 2, 3]).map((n, i: number) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: nodeColors[i % nodeColors.length] + "22", border: `1px solid ${nodeColors[i % nodeColors.length]}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: nodeColors[i % nodeColors.length] }} />
@@ -243,7 +246,7 @@ function WorkflowCard({ wf, onDelete }: { wf: Workflow; onDelete: (id: string) =
   );
 }
 
-export default function DashboardClient({ workflows, recentRuns = [] }: { workflows: Workflow[]; recentRuns?: any[] }) {
+export default function DashboardClient({ workflows }: { workflows: Workflow[]; recentRuns?: unknown[] }) {
   const router = useRouter();
   const [wfs, setWfs] = useState(workflows);
   const [tab, setTab] = useState("Projects");

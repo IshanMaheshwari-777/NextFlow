@@ -195,7 +195,7 @@ function LLMResponseRenderer({ text }: { text: string }) {
 function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied: boolean; onCopy: (e: React.MouseEvent) => void; onClose: () => void }) {
   // Detect JSON
   let isJson = false;
-  let jsonData: any = null;
+  let jsonData: unknown = null;
   try { jsonData = JSON.parse(text); isJson = true; } catch { }
 
   // Close on Escape
@@ -208,6 +208,9 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
   return ReactDOM.createPortal(
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="LLM response"
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
         background: "rgba(5,5,10,0.85)", backdropFilter: "blur(8px)",
@@ -288,7 +291,8 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
 /* ---------------- MAIN NODE ---------------- */
 
 export default memo(function LLMNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const d = data as any;
   const connected: string[] = d.connectedInputs || [];
 

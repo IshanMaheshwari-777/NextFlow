@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
-import { CheckCircle2, XCircle, Loader2, Clock, History, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { History, ChevronsRight } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { formatDuration, getStatusBg } from "@/lib/utils";
+import { useShallow } from "zustand/react/shallow";
+import { formatDuration } from "@/lib/utils";
+import type { WorkflowRunRecord } from "@/types";
 
 function StatusDot({ status, size = 8 }: { status: string; size?: number }) {
   const colors: Record<string, string> = {
@@ -19,7 +21,9 @@ function StatusDot({ status, size = 8 }: { status: string; size?: number }) {
 }
 
 export default function RightSidebar() {
-  const { runHistory, selectedRunId, setSelectedRunId, isRightOpen, setIsRightOpen } = useWorkflowStore();
+  const { runHistory, selectedRunId, setSelectedRunId, isRightOpen, setIsRightOpen } = useWorkflowStore(
+    useShallow(s => ({ runHistory: s.runHistory, selectedRunId: s.selectedRunId, setSelectedRunId: s.setSelectedRunId, isRightOpen: s.isRightOpen, setIsRightOpen: s.setIsRightOpen }))
+  );
 
   const activeRunId = selectedRunId || (runHistory.length > 0 ? runHistory[0].id : null);
   const activeRun = runHistory.find(r => r.id === activeRunId);
@@ -158,7 +162,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function RunCard({ run, runNumber, onSelect }: { run: any; runNumber: number; onSelect: () => void }) {
+function RunCard({ run, runNumber, onSelect }: { run: WorkflowRunRecord; runNumber: number; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button

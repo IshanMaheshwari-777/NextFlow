@@ -3,9 +3,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { useRouter } from "next/navigation";
-import { Play, Download, Upload, Loader2, ChevronDown, Undo2, Redo2, AlertTriangle, XCircle, Sparkles, Clock, Sun, Moon, ArrowLeft, Network } from "lucide-react";
+import { Play, Download, Upload, Loader2, ChevronDown, Undo2, AlertTriangle, XCircle, Sparkles, Clock, Sun, Moon, ArrowLeft, Network } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { NODE_HANDLES, NodeType, HANDLE_COMPAT } from "@/types";
+import { useShallow } from "zustand/react/shallow";
+import { NODE_HANDLES, NodeType, HANDLE_COMPAT, AppNode, AppEdge } from "@/types";
+import { defaultNodeData } from "@/lib/nodeRegistry";
+import { wouldCreateCycle } from "@/lib/graph";
+import { useEscapeClose } from "@/lib/useEscapeClose";
 
 type Props = { allWorkflows: { id: string; name: string; updatedAt: Date }[]; onHistoryOpen: () => void };
 
@@ -13,6 +17,9 @@ type Props = { allWorkflows: { id: string; name: string; updatedAt: Date }[]; on
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
+  // Server can't know the persisted theme; correct the icon once after mount rather
+  // than risk a hydration mismatch by reading `document` during the first render.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setIsDark(!document.documentElement.classList.contains("light")); }, []);
   const toggle = () => {
     const next = isDark ? "light" : "dark";
@@ -21,7 +28,7 @@ function ThemeToggle() {
     setIsDark(!isDark);
   };
   return (
-    <button onClick={toggle} className="ghost-btn" title="Toggle theme">
+    <button onClick={toggle} className="ghost-btn" title="Toggle theme" aria-label="Toggle theme">
       {isDark ? <Sun size={15} /> : <Moon size={15} />}
     </button>
   );
@@ -30,9 +37,13 @@ function ThemeToggle() {
 export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
   const {
     workflowId, workflowName, nodes, edges, isRunning, past, future, cooldownEnd,
-    setWorkflowName, setNodes, setEdges, saveSnapshot, exportAsJSON, importFromJSON,
-    resetNodeStates, setIsRunning, setNodeResult, setIsRightOpen, updateNodeData, undo, redo
-  } = useWorkflowStore();
+    setWorkflowName, exportAsJSON, importFromJSON,
+    resetNodeStates, setIsRunning, setIsRightOpen, undo, redo
+  } = useWorkflowStore(useShallow(s => ({
+    workflowId: s.workflowId, workflowName: s.workflowName, nodes: s.nodes, edges: s.edges, isRunning: s.isRunning, past: s.past, future: s.future, cooldownEnd: s.cooldownEnd,
+    setWorkflowName: s.setWorkflowName, exportAsJSON: s.exportAsJSON, importFromJSON: s.importFromJSON,
+    resetNodeStates: s.resetNodeStates, setIsRunning: s.setIsRunning, setIsRightOpen: s.setIsRightOpen, undo: s.undo, redo: s.redo,
+  })));
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showRunMenu, setShowRunMenu] = useState(false);
@@ -59,6 +70,66 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  // Polls a single in-flight run until it finishes. The run itself executes in a
+  // Trigger.dev task (not bound by this page's lifetime or Vercel's request timeout),
+  // so this is the only thing keeping the UI in sync while it's going.
+  const pollRun = useCallback(async (runId: string): Promise<{ status: string }> => {
+    const seen = new Map<string, string>(); // nodeId -> last-applied status, avoids redundant store writes
+    const POLL_MS = 1200;
+    const MAX_WAIT_MS = 10 * 60 * 1000; // client-side backstop; the server-side reaper covers the rest
+    const start = Date.now();
+    while (Date.now() - start < MAX_WAIT_MS) {
+      const res = await fetch(`/api/workflow/${workflowId}/run/${runId}`);
+      if (!res.ok) throw new Error(`Failed to check run status (${res.status})`);
+      const { run } = await res.json();
+      const store = useWorkflowStore.getState();
+      for (const nr of run.nodeRuns || []) {
+        if (seen.get(nr.nodeId) === nr.status) continue;
+        seen.set(nr.nodeId, nr.status);
+        if (nr.status === "running") store.updateNodeData(nr.nodeId, { isRunning: true, runStatus: "running", runError: undefined, runOutput: undefined });
+        else if (nr.status === "success") store.setNodeResult(nr.nodeId, "success", nr.output, undefined);
+        else if (nr.status === "failed") store.setNodeResult(nr.nodeId, "failed", undefined, nr.error);
+      }
+      if (run.status !== "running") return { status: run.status };
+      await new Promise(r => setTimeout(r, POLL_MS));
+    }
+    throw new Error("Run is taking longer than expected — check the run history panel for its final status.");
+  }, [workflowId]);
+
+  const handleRun = useCallback(async (mode: "full" | "selected" | "single" = "full", overrideNodeIds?: string[]) => {
+    if (isRunning || !workflowId || nodes.length === 0) return;
+    setShowRunMenu(false);
+    let selectedNodeIds = overrideNodeIds || [];
+    if (mode === "selected") {
+      selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
+      if (selectedNodeIds.length === 0) return;
+    }
+    const targetedImageNodes = nodes.filter(n => n.type === "generate-image" && (mode === "full" || selectedNodeIds.includes(n.id)));
+    if (targetedImageNodes.length > 0 && cooldownEnd > Date.now()) {
+      const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
+      const m = Math.floor(remaining / 60), s = remaining % 60;
+      showToast(`Image generation cooldown active. Please wait ${m}:${s.toString().padStart(2, "0")}.`, "warning");
+      return;
+    }
+    resetNodeStates(); setIsRunning(true); setIsRightOpen(true);
+    try {
+      const cleanNodes = nodes.map(n => ({ ...n, data: { ...n.data, fileData: undefined, previewUrl: undefined } }));
+      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes: cleanNodes, edges, runMode: mode, selectedNodeIds }) });
+      if (!res.ok) { const t = await res.json().catch(() => ({})); throw new Error(t?.error || `Workflow run failed (${res.status})`); }
+      const { runId } = await res.json();
+      const { status } = await pollRun(runId);
+      if (status === "failed") showToast("Workflow run failed. Check node errors for details.", "error");
+      else if (status === "partial") showToast("Some nodes failed during the workflow run.", "warning");
+      const runsRes = await fetch(`/api/workflow/${workflowId}/runs`);
+      if (runsRes.ok) { const { runs } = await runsRes.json(); useWorkflowStore.getState().setRunHistory(runs); }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Workflow run failed. Check node errors for details.";
+      showToast(message, "error");
+      const store = useWorkflowStore.getState();
+      for (const node of store.nodes) { if (node.data.isRunning) store.setNodeResult(node.id, "failed", undefined, message); }
+    } finally { setIsRunning(false); }
+  }, [isRunning, workflowId, nodes, edges, cooldownEnd, showToast, resetNodeStates, setIsRunning, setIsRightOpen, pollRun]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); handleRun("full"); }
@@ -80,86 +151,13 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
     window.addEventListener("run-single-node", handleRunSingle);
     window.addEventListener("canvas-run-workflow", handleCanvasRun);
     return () => { window.removeEventListener("keydown", handleKeyDown); window.removeEventListener("run-single-node", handleRunSingle); window.removeEventListener("canvas-run-workflow", handleCanvasRun); };
-  }, [isRunning, workflowId, nodes, edges]);
-
-  useEffect(() => {
-    let poll: NodeJS.Timeout;
-    if (isRunning && workflowId) {
-      poll = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/workflow/${workflowId}/runs`);
-          if (res.ok) { const { runs } = await res.json(); useWorkflowStore.getState().setRunHistory(runs); }
-        } catch {}
-      }, 2000);
-    }
-    return () => { if (poll) clearInterval(poll); };
-  }, [isRunning, workflowId]);
-
-  const handleRun = async (mode: "full" | "selected" | "single" = "full", overrideNodeIds?: string[]) => {
-    if (isRunning || !workflowId || nodes.length === 0) return;
-    setShowRunMenu(false);
-    let selectedNodeIds = overrideNodeIds || [];
-    if (mode === "selected") {
-      selectedNodeIds = nodes.filter((n: any) => n.selected).map(n => n.id);
-      if (selectedNodeIds.length === 0) return;
-    }
-    const targetedImageNodes = nodes.filter(n => n.type === "generate-image" && (mode === "full" || selectedNodeIds.includes(n.id)));
-    if (targetedImageNodes.length > 0 && cooldownEnd > Date.now()) {
-      const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
-      const m = Math.floor(remaining / 60), s = remaining % 60;
-      showToast(`Image generation cooldown active. Please wait ${m}:${s.toString().padStart(2, "0")}.`, "warning");
-      return;
-    }
-    resetNodeStates(); setIsRunning(true); setIsRightOpen(true);
-    const runStart = performance.now();
-    try {
-      const cleanNodes = nodes.map(n => ({ ...n, data: { ...n.data, fileData: undefined, previewUrl: undefined } }));
-      const res = await fetch(`/api/workflow/${workflowId}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nodes: cleanNodes, edges, runMode: mode, selectedNodeIds }) });
-      if (!res.ok) { const t = await res.text().catch(() => "Unknown error"); throw new Error(`Workflow run failed (${res.status})`); }
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("text/event-stream") && res.body) {
-        const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read(); if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n"); buffer = parts.pop() || "";
-          for (const part of parts) {
-            if (!part.trim()) continue;
-            const lines = part.split("\n"); let eventType = "", dataStr = "";
-            for (const line of lines) { if (line.startsWith("event: ")) eventType = line.slice(7); if (line.startsWith("data: ")) dataStr += line.slice(6); }
-            if (!eventType || !dataStr) continue;
-            try {
-              const data = JSON.parse(dataStr); const store = useWorkflowStore.getState();
-              if (eventType === "node-start") store.updateNodeData(data.nodeId, { isRunning: true, runStatus: "running", runError: undefined, runOutput: undefined });
-              else if (eventType === "node-complete") store.setNodeResult(data.nodeId, data.status, data.output, data.error);
-              else if (eventType === "workflow-complete") { if (data.status === "failed") showToast("Workflow run failed. Check node errors for details.", "error"); else if (data.status === "partial") showToast("Some nodes failed during the workflow run.", "warning"); }
-              else if (eventType === "error") showToast(data.error || "Workflow run failed.", "error");
-            } catch {}
-          }
-        }
-      } else {
-        const data = await res.json();
-        if (data.nodeResults) for (const [nid, result] of Object.entries(data.nodeResults as Record<string, any>)) setNodeResult(nid, result.status, result.output, result.error);
-        if (data.status === "failed") showToast("Workflow run failed.", "error");
-      }
-      const runsRes = await fetch(`/api/workflow/${workflowId}/runs`);
-      if (runsRes.ok) { const { runs } = await runsRes.json(); useWorkflowStore.getState().setRunHistory(runs); }
-    } catch (e: any) {
-      showToast("Workflow run failed. Check node errors for details.", "error");
-      const store = useWorkflowStore.getState();
-      for (const node of store.nodes) { if ((node.data as any).isRunning) store.setNodeResult(node.id, "failed", undefined, e?.message); }
-    } finally { setIsRunning(false); }
-  };
+  }, [handleRun]);
 
   const handleExport = () => {
     const blob = new Blob([exportAsJSON()], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${workflowName}.json`; a.click();
   };
-  const createNew = async () => {
-    const res = await fetch("/api/workflow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "New Workflow" }) });
-    const data = await res.json(); if (data.id) router.push(`/workflow/${data.id}`);
-  };
-
+  const handleImportClick = useCallback(() => { fileRef.current?.click(); }, []);
   const sep = <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />;
 
   return (
@@ -202,18 +200,24 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
 
             {showDropdown && (
               <div style={{ position: "absolute", top: 44, left: 0, zIndex: 300, width: 220, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,0.4)", overflow: "hidden", animation: "fadeIn 0.12s ease" }}>
-                {[
-                  { icon: <ArrowLeft size={13} />, label: "Back to Dashboard", action: () => { router.push("/dashboard"); setShowDropdown(false); } },
-                  { icon: <Download size={13} />, label: "Export JSON", action: () => { handleExport(); setShowDropdown(false); } },
-                  { icon: <Upload size={13} />, label: "Import JSON", action: () => { fileRef.current?.click(); setShowDropdown(false); } },
-                ].map(item => (
-                  <button key={item.label} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: 13, textAlign: "left" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "var(--nav-hover)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                  >
-                    {item.icon} {item.label}
-                  </button>
-                ))}
+                {(() => {
+                  const menuItemStyle = { width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: 13, textAlign: "left" as const };
+                  const onEnter = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "var(--nav-hover)");
+                  const onLeave = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "none");
+                  return (
+                    <>
+                      <button onClick={() => { router.push("/dashboard"); setShowDropdown(false); }} style={menuItemStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+                        <ArrowLeft size={13} /> Back to Dashboard
+                      </button>
+                      <button onClick={() => { handleExport(); setShowDropdown(false); }} style={menuItemStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+                        <Download size={13} /> Export JSON
+                      </button>
+                      <button onClick={() => { handleImportClick(); setShowDropdown(false); }} style={menuItemStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+                        <Upload size={13} /> Import JSON
+                      </button>
+                    </>
+                  );
+                })()}
                 {allWorkflows.length > 0 && (
                   <>
                     <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
@@ -241,9 +245,9 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
           <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => importFromJSON(ev.target?.result as string); r.readAsText(f); }} />
 
           <ThemeToggle />
-          <button onClick={onHistoryOpen} className="ghost-btn" title="Run history"><Clock size={15} /></button>
-          <button onClick={undo} disabled={past.length === 0} className="ghost-btn" title="Undo (⌘Z)"><Undo2 size={15} /></button>
-          <button onClick={redo} disabled={future.length === 0} className="ghost-btn" title="Redo (⌘⇧Z)"><Undo2 size={15} style={{ transform: "scaleX(-1)" }} /></button>
+          <button onClick={onHistoryOpen} className="ghost-btn" title="Run history" aria-label="Open run history"><Clock size={15} /></button>
+          <button onClick={undo} disabled={past.length === 0} className="ghost-btn" title="Undo (⌘Z)" aria-label="Undo"><Undo2 size={15} /></button>
+          <button onClick={redo} disabled={future.length === 0} className="ghost-btn" title="Redo (⌘⇧Z)" aria-label="Redo"><Undo2 size={15} style={{ transform: "scaleX(-1)" }} /></button>
 
           {sep}
 
@@ -279,18 +283,27 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
             </button>
             {showRunMenu && (
               <div style={{ position: "absolute", top: 36, right: 0, zIndex: 300, width: 200, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: 4, animation: "fadeIn 0.1s ease" }}>
-                {[
-                  { label: "▶  Run Full Workflow", sub: "⌘↵", action: () => handleRun("full") },
-                  { label: "▶  Run Selected Nodes", sub: "", action: () => handleRun("selected"), disabled: nodes.filter((n: any) => n.selected).length === 0 },
-                ].map(item => (
-                  <button key={item.label} onClick={item.action} disabled={item.disabled} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "none", border: "none", borderRadius: 6, cursor: item.disabled ? "not-allowed" : "pointer", color: item.disabled ? "var(--text-muted)" : "var(--text-secondary)", fontSize: 12 }}
-                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "var(--nav-hover)"; }}
-                    onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                  >
-                    <span>{item.label}</span>
-                    {item.sub && <span style={{ fontSize: 10, opacity: 0.4 }}>{item.sub}</span>}
-                  </button>
-                ))}
+                {(() => {
+                  const noSelection = nodes.filter(n => n.selected).length === 0;
+                  const runMenuItemStyle = (disabled: boolean) => ({ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" as const, padding: "8px 12px", background: "none", border: "none", borderRadius: 6, cursor: disabled ? "not-allowed" : "pointer", color: disabled ? "var(--text-muted)" : "var(--text-secondary)", fontSize: 12 });
+                  return (
+                    <>
+                      <button onClick={() => handleRun("full")} style={runMenuItemStyle(false)}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--nav-hover)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                      >
+                        <span>▶  Run Full Workflow</span>
+                        <span style={{ fontSize: 10, opacity: 0.4 }}>⌘↵</span>
+                      </button>
+                      <button onClick={() => handleRun("selected")} disabled={noSelection} style={runMenuItemStyle(noSelection)}
+                        onMouseEnter={e => { if (!noSelection) e.currentTarget.style.background = "var(--nav-hover)"; }}
+                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                      >
+                        <span>▶  Run Selected Nodes</span>
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -315,37 +328,31 @@ export default function TopBar({ allWorkflows, onHistoryOpen }: Props) {
   );
 }
 
+// Shape of a raw node/edge as the LLM returns it (before ID remapping, default-merging,
+// and handle validation normalize it into an AppNode/AppEdge below).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- LLM-generated node data, shape unknown until merged with type defaults
+type RawGeneratedNode = { id: string; type: string; position?: { x: number; y: number }; data?: Record<string, any> };
+type RawGeneratedEdge = { id?: string; source: string; target: string; sourceHandle?: string; targetHandle?: string };
+
 function AIWorkflowGenerator() {
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const { nodes, edges, setNodes, setEdges, saveSnapshot } = useWorkflowStore();
+  const { nodes, edges, setNodes, setEdges, saveSnapshot } = useWorkflowStore(
+    useShallow(s => ({ nodes: s.nodes, edges: s.edges, setNodes: s.setNodes, setEdges: s.setEdges, saveSnapshot: s.saveSnapshot }))
+  );
+  useEscapeClose(() => setOpen(false), open);
   const handleGenerate = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
     try {
       const res = await fetch("/api/workflow/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
       if (res.ok) {
-        const data = await res.json();
+        const data: { nodes?: RawGeneratedNode[]; edges?: RawGeneratedEdge[] } = await res.json();
         if (data.nodes && data.edges) {
           saveSnapshot();
           const idMap = new Map<string, string>();
-
-          // Utility: get default data for a node type
-          const getDefaults = (type: string): Record<string, any> => {
-            switch (type) {
-              case "text": return { label: "Text Node", text: "" };
-              case "upload-image": return { label: "Upload Image" };
-              case "upload-video": return { label: "Upload Video" };
-              case "llm": return { label: "LLM Node", model: "llama-3.1-8b-instant", system_prompt: "", user_message: "" };
-              case "crop-image": return { label: "Crop Image", x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
-              case "extract-frame": return { label: "Extract Frame", timestamp: 0 };
-              case "generate-image": return { label: "Generate Image", prompt: "", model: "flux", width: 768, height: 768, seed: Math.floor(Math.random() * 1000000) };
-              case "prompt-enhancer": return { label: "Enhance Prompt", prompt: "", style: "realistic" };
-              case "video-enhance": return { label: "Video Enhance", video_url: "", resolution: "1080p", strength: "medium" };
-              default: return { label: "Node" };
-            }
-          };
+          const getDefaults = defaultNodeData;
 
           // Handle ID correction map for common LLM mistakes
           const HANDLE_ALIASES: Record<string, string> = {
@@ -358,15 +365,18 @@ function AIWorkflowGenerator() {
 
           // Step 1: Remap node IDs and merge with defaults
           const validTypes = new Set(["text", "upload-image", "upload-video", "llm", "crop-image", "extract-frame", "generate-image", "prompt-enhancer", "video-enhance"]);
-          const mappedNodes = data.nodes
-            .filter((n: any) => validTypes.has(n.type))
-            .map((n: any) => {
+          const mappedNodes: AppNode[] = (data.nodes ?? [])
+            .filter(n => validTypes.has(n.type))
+            .map(n => {
               const newId = `${n.type}-${Math.random().toString(36).substr(2, 9)}`;
               idMap.set(n.id, newId);
-              const defaults = getDefaults(n.type);
+              const type = n.type as NodeType;
+              const defaults = getDefaults(type);
               return {
                 ...n,
                 id: newId,
+                type,
+                position: n.position || { x: 0, y: 0 },
                 data: {
                   ...defaults,
                   ...n.data,
@@ -378,62 +388,64 @@ function AIWorkflowGenerator() {
             });
 
           // Step 2: Build a set of valid node IDs for edge validation
-          const validNodeIds = new Set(mappedNodes.map((n: any) => n.id));
+          const validNodeIds = new Set(mappedNodes.map(n => n.id));
 
           // Step 3: Validate/correct edges and add visual properties
           const handleColors: Record<string, string> = { text: "#6366f1", image: "#10b981", video: "#f59e0b", any: "#94a3b8" };
-          const mappedEdges = data.edges
-            .map((e: any) => {
-              const newSource = idMap.get(e.source) || e.source;
-              const newTarget = idMap.get(e.target) || e.target;
-              // Skip edges with unmapped nodes
-              if (!validNodeIds.has(newSource) || !validNodeIds.has(newTarget)) return null;
+          const mappedEdges: AppEdge[] = [];
+          for (const e of data.edges ?? []) {
+            const newSource = idMap.get(e.source) || e.source;
+            const newTarget = idMap.get(e.target) || e.target;
+            // Skip edges with unmapped nodes
+            if (!validNodeIds.has(newSource) || !validNodeIds.has(newTarget)) continue;
 
-              // Fix handle IDs using alias map
-              let srcHandle = e.sourceHandle || "output";
-              let tgtHandle = e.targetHandle || "output";
-              srcHandle = HANDLE_ALIASES[srcHandle] || srcHandle;
-              tgtHandle = HANDLE_ALIASES[tgtHandle] || tgtHandle;
+            // Fix handle IDs using alias map
+            let srcHandle = e.sourceHandle || "output";
+            let tgtHandle = e.targetHandle || "output";
+            srcHandle = HANDLE_ALIASES[srcHandle] || srcHandle;
+            tgtHandle = HANDLE_ALIASES[tgtHandle] || tgtHandle;
 
-              // Validate handles against NODE_HANDLES definitions
-              const srcNode = mappedNodes.find((n: any) => n.id === newSource);
-              const tgtNode = mappedNodes.find((n: any) => n.id === newTarget);
-              if (!srcNode || !tgtNode) return null;
-              const srcHandleDefs = NODE_HANDLES[srcNode.type as NodeType];
-              const tgtHandleDefs = NODE_HANDLES[tgtNode.type as NodeType];
-              if (!srcHandleDefs || !tgtHandleDefs) return null;
+            // Validate handles against NODE_HANDLES definitions
+            const srcNode = mappedNodes.find(n => n.id === newSource);
+            const tgtNode = mappedNodes.find(n => n.id === newTarget);
+            if (!srcNode || !tgtNode) continue;
+            const srcHandleDefs = NODE_HANDLES[srcNode.type as NodeType];
+            const tgtHandleDefs = NODE_HANDLES[tgtNode.type as NodeType];
+            if (!srcHandleDefs || !tgtHandleDefs) continue;
 
-              // Auto-correct: if sourceHandle doesn't exist, default to "output"
-              if (!srcHandleDefs.outputs.find((h: any) => h.id === srcHandle)) srcHandle = "output";
-              // Auto-correct: if targetHandle doesn't exist, pick the first compatible input
-              const tgtHandleDef = tgtHandleDefs.inputs.find((h: any) => h.id === tgtHandle);
-              if (!tgtHandleDef && tgtHandleDefs.inputs.length > 0) {
-                // Find the source output type
-                const srcType = srcHandleDefs.outputs.find((h: any) => h.id === srcHandle)?.type || "any";
-                // Pick first compatible input
-                const compatible = tgtHandleDefs.inputs.find((h: any) => HANDLE_COMPAT[srcType as keyof typeof HANDLE_COMPAT]?.includes(h.type));
-                tgtHandle = compatible?.id || tgtHandleDefs.inputs[0].id;
-              }
+            // Auto-correct: if sourceHandle doesn't exist, default to "output"
+            if (!srcHandleDefs.outputs.find(h => h.id === srcHandle)) srcHandle = "output";
+            // Auto-correct: if targetHandle doesn't exist, pick the first compatible input
+            const tgtHandleDef = tgtHandleDefs.inputs.find(h => h.id === tgtHandle);
+            if (!tgtHandleDef && tgtHandleDefs.inputs.length > 0) {
+              // Find the source output type
+              const srcType = srcHandleDefs.outputs.find(h => h.id === srcHandle)?.type || "any";
+              // Pick first compatible input
+              const compatible = tgtHandleDefs.inputs.find(h => HANDLE_COMPAT[srcType as keyof typeof HANDLE_COMPAT]?.includes(h.type));
+              tgtHandle = compatible?.id || tgtHandleDefs.inputs[0].id;
+            }
 
-              // Determine edge color from source output type
-              const srcOutDef = srcHandleDefs.outputs.find((h: any) => h.id === srcHandle);
-              const strokeColor = handleColors[srcOutDef?.type || "any"] || "#94a3b8";
+            // Reject if it would close a cycle against the existing graph + edges already accepted this batch
+            if (wouldCreateCycle([...edges, ...mappedEdges], newSource, newTarget)) continue;
 
-              return {
-                id: `e-${newSource}-${srcHandle}-${newTarget}-${tgtHandle}`,
-                source: newSource,
-                sourceHandle: srcHandle,
-                target: newTarget,
-                targetHandle: tgtHandle,
-                animated: true,
-                style: { stroke: strokeColor, strokeWidth: 2 },
-              };
-            })
-            .filter(Boolean);
+            // Determine edge color from source output type
+            const srcOutDef = srcHandleDefs.outputs.find(h => h.id === srcHandle);
+            const strokeColor = handleColors[srcOutDef?.type || "any"] || "#94a3b8";
+
+            mappedEdges.push({
+              id: `e-${newSource}-${srcHandle}-${newTarget}-${tgtHandle}`,
+              source: newSource,
+              sourceHandle: srcHandle,
+              target: newTarget,
+              targetHandle: tgtHandle,
+              animated: true,
+              style: { stroke: strokeColor, strokeWidth: 2 },
+            });
+          }
 
           // Step 4: Populate connectedInputs on target nodes
           for (const edge of mappedEdges) {
-            const targetNode = mappedNodes.find((n: any) => n.id === edge.target);
+            const targetNode = mappedNodes.find(n => n.id === edge.target);
             if (targetNode && !targetNode.data.connectedInputs.includes(edge.targetHandle)) {
               targetNode.data.connectedInputs.push(edge.targetHandle);
             }
@@ -455,13 +467,13 @@ function AIWorkflowGenerator() {
         <Sparkles size={12} /> AI Generate
       </button>
       {open && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)" }} onClick={() => setOpen(false)}>
+        <div role="dialog" aria-modal="true" aria-labelledby="ai-generate-title" style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)" }} onClick={() => setOpen(false)}>
           <div style={{ width: "min(480px,90vw)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 24px 64px rgba(0,0,0,0.5)", animation: "slideUp 0.25s ease" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <div style={{ width: 32, height: 32, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Sparkles size={16} color="var(--bg)" />
               </div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>Generate Workflow</h3>
+              <h3 id="ai-generate-title" style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>Generate Workflow</h3>
             </div>
             <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20, lineHeight: 1.5 }}>Describe the workflow you want to build. AI will generate the nodes and connections.</p>
             <textarea autoFocus placeholder="e.g. Build AI workflow with prompt enhancement, LLM processing, and image generation..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ width: "100%", minHeight: 110, background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, outline: "none", resize: "none", marginBottom: 20, fontFamily: "inherit", lineHeight: 1.5 }} />

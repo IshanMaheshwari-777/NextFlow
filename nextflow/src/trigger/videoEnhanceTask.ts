@@ -1,5 +1,6 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
+import { getEnv } from "../lib/env";
 
 const RESOLUTION_MAP: Record<string, { width: number; height: number }> = {
   "720p":  { width: 1280, height: 720 },
@@ -53,9 +54,7 @@ export const videoEnhanceTask = task({
     logger.info("Video enhance task started", { nodeId, video_url, resolution, strength });
 
     if (!video_url) throw new Error("video_url is required for Video Enhance node");
-    if (!process.env.TRANSLOADIT_AUTH_KEY || !process.env.TRANSLOADIT_AUTH_SECRET) {
-      throw new Error("TRANSLOADIT_AUTH_KEY or TRANSLOADIT_AUTH_SECRET not set");
-    }
+    const env = getEnv();
 
     const { width, height } = RESOLUTION_MAP[resolution] ?? RESOLUTION_MAP["1080p"];
     const { denoise, sharpen, eq } = STRENGTH_MAP[strength] ?? STRENGTH_MAP["medium"];
@@ -64,8 +63,8 @@ export const videoEnhanceTask = task({
     logger.info("FFmpeg filter chain", { vf, width, height });
 
     const client = new Transloadit({
-      authKey: process.env.TRANSLOADIT_AUTH_KEY!,
-      authSecret: process.env.TRANSLOADIT_AUTH_SECRET!,
+      authKey: env.TRANSLOADIT_AUTH_KEY,
+      authSecret: env.TRANSLOADIT_AUTH_SECRET,
     });
 
     const assembly = await client.createAssembly({
@@ -98,7 +97,7 @@ export const videoEnhanceTask = task({
 
     const maxWaitMs = 180_000;
     const startTime = Date.now();
-    let completed: any;
+    let completed: Awaited<ReturnType<typeof client.getAssembly>> | undefined;
 
     while (Date.now() - startTime < maxWaitMs) {
       const status = await client.getAssembly(assembly.assembly_id);
@@ -128,6 +127,7 @@ export const videoEnhanceTask = task({
 
     const enhanced = enhancedResults[0];
     const videoUrl = enhanced.ssl_url || enhanced.url;
+    if (!videoUrl) throw new Error("Video enhance succeeded but no URL returned");
 
     logger.info("Video enhance completed", { nodeId, videoUrl, resolution, strength });
 

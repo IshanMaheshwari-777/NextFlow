@@ -1,15 +1,17 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
-import { Transloadit } from "transloadit";
+import { Transloadit, type AssemblyStatus, type CreateAssemblyOptions } from "transloadit";
 import { Readable } from "node:stream";
+import { getEnv } from "../lib/env";
 
 function getClient() {
+  const env = getEnv();
   return new Transloadit({
-    authKey: process.env.TRANSLOADIT_AUTH_KEY!,
-    authSecret: process.env.TRANSLOADIT_AUTH_SECRET!,
+    authKey: env.TRANSLOADIT_AUTH_KEY,
+    authSecret: env.TRANSLOADIT_AUTH_SECRET,
   });
 }
 
-async function waitForAssembly(client: any, assemblyId: string, maxMs = 120000): Promise<any> {
+async function waitForAssembly(client: Transloadit, assemblyId: string, maxMs = 120000): Promise<AssemblyStatus> {
   const start = Date.now();
   let delay = 500; // Start at 500ms instead of fixed 2000ms
   while (Date.now() - start < maxMs) {
@@ -28,7 +30,7 @@ async function waitForAssembly(client: any, assemblyId: string, maxMs = 120000):
 export const uploadImageTask = task({
   id: "upload-image-node",
   retry: { maxAttempts: 3, minTimeoutInMs: 2000, maxTimeoutInMs: 15000, factor: 2 },
-  run: async (payload: { nodeId: string; workflowRunId: string; fileData?: string; fileUrl?: string; fileName: string; mimeType: string }) => {
+  run: async (payload: { nodeId: string; workflowRunId?: string; fileData?: string; fileUrl?: string; fileName: string; mimeType: string }) => {
     const { nodeId, fileData, fileUrl, fileName } = payload;
     logger.info("Upload image started", { nodeId });
 
@@ -37,7 +39,7 @@ export const uploadImageTask = task({
     }
 
     const client = getClient();
-    const opts: any = {
+    const opts: CreateAssemblyOptions = {
       params: {
         steps: {
           ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl } } : {}),
@@ -46,7 +48,7 @@ export const uploadImageTask = task({
         },
       },
     };
-    let assembly: any;
+    let assembly: Awaited<ReturnType<typeof client.createAssembly>>;
     if (fileData) {
       // Transloadit SDK v4: `files` expects string paths, `uploads` expects streams
       const buf = Buffer.from(fileData, "base64");
@@ -55,6 +57,7 @@ export const uploadImageTask = task({
     } else {
       assembly = await client.createAssembly(opts);
     }
+    if (!assembly.assembly_id) throw new Error("Transloadit assembly ID missing");
     const done = await waitForAssembly(client, assembly.assembly_id);
     const main = (done.results?.optimized || done.results?.imported || [])[0];
     const thumb = (done.results?.thumbnail || [])[0];
@@ -69,7 +72,7 @@ export const uploadImageTask = task({
 export const uploadVideoTask = task({
   id: "upload-video-node",
   retry: { maxAttempts: 2, minTimeoutInMs: 5000, maxTimeoutInMs: 30000, factor: 2 },
-  run: async (payload: { nodeId: string; workflowRunId: string; fileData?: string; fileUrl?: string; fileName: string; mimeType: string }) => {
+  run: async (payload: { nodeId: string; workflowRunId?: string; fileData?: string; fileUrl?: string; fileName: string; mimeType: string }) => {
     const { nodeId, fileData, fileUrl, fileName } = payload;
     logger.info("Upload video started", { nodeId });
 
@@ -78,7 +81,7 @@ export const uploadVideoTask = task({
     }
 
     const client = getClient();
-    const opts: any = {
+    const opts: CreateAssemblyOptions = {
       params: {
         steps: {
           ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl } } : {}),
@@ -87,7 +90,7 @@ export const uploadVideoTask = task({
         },
       },
     };
-    let assembly: any;
+    let assembly: Awaited<ReturnType<typeof client.createAssembly>>;
     if (fileData) {
       // Transloadit SDK v4: `files` expects string paths, `uploads` expects streams
       const buf = Buffer.from(fileData, "base64");
@@ -96,6 +99,7 @@ export const uploadVideoTask = task({
     } else {
       assembly = await client.createAssembly(opts);
     }
+    if (!assembly.assembly_id) throw new Error("Transloadit assembly ID missing");
     const done = await waitForAssembly(client, assembly.assembly_id, 180000);
     const main = (done.results?.stored || [])[0];
     const thumb = (done.results?.thumbnail || [])[0];

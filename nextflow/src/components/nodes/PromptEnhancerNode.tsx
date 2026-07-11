@@ -180,6 +180,9 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
   return ReactDOM.createPortal(
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Enhanced prompt"
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
         background: "rgba(5,5,10,0.85)", backdropFilter: "blur(8px)",
@@ -242,7 +245,8 @@ function ResponseModal({ text, copied, onCopy, onClose }: { text: string; copied
 /* ---------------- MAIN COMPONENT ---------------- */
 
 export default memo(function PromptEnhancerNode({ id, data, selected }: NodeProps) {
-  const { updateNodeData } = useWorkflowStore();
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- node data shape is heterogeneous across node types
   const rawData = data as any;
   const connectedInputs: string[] = rawData.connectedInputs || [];
 

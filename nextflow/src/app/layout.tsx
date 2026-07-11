@@ -6,9 +6,28 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const title = "NextFlow — AI Workflow Builder";
+const description = "Build, connect, and run AI-powered workflows visually — chain LLM prompts, image generation, and video processing on a drag-and-drop canvas.";
+
 export const metadata: Metadata = {
-  title: "NextFlow — AI Workflow Builder",
-  description: "Visual LLM workflow builder powered by Groq",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    url: siteUrl,
+    siteName: "NextFlow",
+    images: [{ url: "/krea-bg.png", width: 1200, height: 630, alt: "NextFlow — AI Workflow Builder" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/krea-bg.png"],
+  },
 };
 
 // Script injected before paint to set dark/light class from localStorage (avoids flash)

@@ -1,5 +1,6 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
+import { getEnv } from "../lib/env";
 
 async function getImageDimensions(url: string): Promise<{ width: number; height: number }> {
   const res = await fetch(url); const bytes = new Uint8Array(await res.arrayBuffer());
@@ -50,7 +51,8 @@ export const cropImageTask = task({
       original: { ow, oh },
     });
 
-    const client = new Transloadit({ authKey: process.env.TRANSLOADIT_AUTH_KEY!, authSecret: process.env.TRANSLOADIT_AUTH_SECRET! });
+    const env = getEnv();
+    const client = new Transloadit({ authKey: env.TRANSLOADIT_AUTH_KEY, authSecret: env.TRANSLOADIT_AUTH_SECRET });
     const assembly = await client.createAssembly({
       params: {
         steps: {
@@ -70,7 +72,7 @@ export const cropImageTask = task({
       },
     });
     const start = Date.now();
-    let done: any;
+    let done: Awaited<ReturnType<typeof client.getAssembly>> | undefined;
     let delay = 500;
     while (Date.now() - start < 60000) {
       const s = await client.getAssembly(assembly.assembly_id as string);

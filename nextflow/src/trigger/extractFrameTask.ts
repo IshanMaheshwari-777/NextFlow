@@ -1,5 +1,6 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
+import { getEnv } from "../lib/env";
 
 export const extractFrameTask = task({
   id: "extract-frame-node",
@@ -12,7 +13,8 @@ export const extractFrameTask = task({
     if (typeof rawUrl === "string") {
       video_url = rawUrl;
     } else if (rawUrl && typeof rawUrl === "object") {
-      video_url = (rawUrl as any).url || (rawUrl as any).videoUrl || (rawUrl as any).output || "";
+      const obj = rawUrl as { url?: string; videoUrl?: string; output?: string };
+      video_url = obj.url || obj.videoUrl || obj.output || "";
     } else {
       video_url = "";
     }
@@ -28,19 +30,23 @@ export const extractFrameTask = task({
     const targetSeconds = Math.max(0, Number(timestamp) || 0);
     logger.info("Extract frame", { nodeId, video_url: video_url.slice(0, 80), targetSeconds, rawTimestamp: timestamp });
 
-    const thumbStep: Record<string, any> = {
+    // Transloadit's robot params are only loosely typed by the SDK; this shape is
+    // specific to the /video/thumbs robot and doesn't match its generic step type.
+    const thumbStep = {
       robot: "/video/thumbs",
       use: "imported",
       offsets: [targetSeconds],  // absolute timestamp array — NOT count + offset_seconds
       format: "jpg",
       quality: 90,
       ffmpeg_stack: "v6.0.0",
-    };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
 
-    const client = new Transloadit({ authKey: process.env.TRANSLOADIT_AUTH_KEY!, authSecret: process.env.TRANSLOADIT_AUTH_SECRET! });
-    const assembly = await client.createAssembly({ params: { steps: { imported: { robot: "/http/import" as const, url: video_url }, frame: thumbStep as any } } });
+    const env = getEnv();
+    const client = new Transloadit({ authKey: env.TRANSLOADIT_AUTH_KEY, authSecret: env.TRANSLOADIT_AUTH_SECRET });
+    const assembly = await client.createAssembly({ params: { steps: { imported: { robot: "/http/import" as const, url: video_url }, frame: thumbStep } } });
     const start = Date.now();
-    let done: any;
+    let done: Awaited<ReturnType<typeof client.getAssembly>> | undefined;
     let delay = 500;
     while (Date.now() - start < 120000) {
       const s = await client.getAssembly(assembly.assembly_id as string);

@@ -17,64 +17,48 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
 
   if (!userId) redirect("/sign-in");
 
-  try {
-    // Fetch workflow data and sidebar list in parallel
-    const [workflow, allWorkflows] = await Promise.all([
-      withRetry(() =>
-        prisma.workflow.findFirst({
-          where: { id, userId: userId as string },
-          include: {
-            workflowRuns: {
-              orderBy: { createdAt: "desc" },
-              take: 20,
-              include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
-            },
+  // A DB fetch failure here throws and is caught by the nearest error.tsx boundary
+  // (src/app/error.tsx), which has its own retry action — no need to duplicate that
+  // fallback UI here.
+  const [workflow, allWorkflows] = await Promise.all([
+    withRetry(() =>
+      prisma.workflow.findFirst({
+        where: { id, userId: userId as string },
+        include: {
+          workflowRuns: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+            include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
           },
-        })
-      ),
-      withRetry(() =>
-        prisma.workflow.findMany({
-          where: { userId: userId as string },
-          orderBy: { updatedAt: "desc" },
-          select: { id: true, name: true, updatedAt: true },
-        })
-      ),
-    ]);
+        },
+      })
+    ),
+    withRetry(() =>
+      prisma.workflow.findMany({
+        where: { userId: userId as string },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, name: true, updatedAt: true },
+      })
+    ),
+  ]);
 
-    if (!workflow) notFound();
+  if (!workflow) notFound();
 
-    // CRITICAL FIX: Serialize Prisma output to plain objects to prevent "An error occurred in the Server Components render"
-    const safeWorkflow = JSON.parse(JSON.stringify({
-      id: workflow.id,
-      name: workflow.name,
-      nodes: workflow.nodes || [],
-      edges: workflow.edges || [],
-      workflowRuns: workflow.workflowRuns || []
-    }));
+  // Serialize Prisma output to plain objects to prevent "An error occurred in the Server Components render"
+  const safeWorkflow = JSON.parse(JSON.stringify({
+    id: workflow.id,
+    name: workflow.name,
+    nodes: workflow.nodes || [],
+    edges: workflow.edges || [],
+    workflowRuns: workflow.workflowRuns || []
+  }));
 
-    const safeAllWorkflows = JSON.parse(JSON.stringify(allWorkflows));
+  const safeAllWorkflows = JSON.parse(JSON.stringify(allWorkflows));
 
-    return (
-      <WorkflowEditor
-        workflow={safeWorkflow}
-        allWorkflows={safeAllWorkflows}
-      />
-    );
-  } catch (error: any) {
-    if (error?.message === "NEXT_NOT_FOUND" || error?.digest?.startsWith("NEXT_NOT_FOUND")) throw error;
-    console.error("[WorkflowPage] Database error:", error);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg)", color: "var(--text)", padding: "2rem" }}>
-        <h2>Unable to load workflow</h2>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "20px" }}>We encountered an error connecting to the database.</p>
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "1rem", borderRadius: "8px", textAlign: "left", fontFamily: "monospace", fontSize: "0.85rem", overflowX: "auto", maxWidth: "800px", width: "100%", marginBottom: "20px" }}>
-          <strong style={{ color: "var(--error)" }}>Error Details:</strong>
-          <pre style={{ margin: "0.5rem 0 0 0", whiteSpace: "pre-wrap", color: "var(--error)" }}>
-            {error?.message || error?.toString() || "Unknown error"}
-          </pre>
-        </div>
-        <button style={{ padding: "8px 16px", background: "var(--accent)", color: "white", borderRadius: "8px", border: "none", cursor: "pointer" }}>Try Again</button>
-      </div>
-    );
-  }
+  return (
+    <WorkflowEditor
+      workflow={safeWorkflow}
+      allWorkflows={safeAllWorkflows}
+    />
+  );
 }
