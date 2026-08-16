@@ -1,0 +1,25 @@
+{
+  "name": "nextflow-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=packages/db && npm run build --workspace=packages/shared && npm run build --workspace=apps/web",
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:trigger": "npm run dev --workspace=apps/worker",
+    "dev:all": "concurrently -n db,shared,web,trigger -c gray,gray,blue,magenta \"npm run dev --workspace=packages/db\" \"npm run dev --workspace=packages/shared\" \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=apps/worker\"",
+    "test": "npm run test --workspace=packages/shared",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run build --workspace=packages/db && npm run build --workspace=packages/shared && npm run typecheck --workspace=apps/web && npm run typecheck --workspace=apps/worker"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+  "overrides": {
+    "@clerk/shared": "4.8.3",
+    "@clerk/backend": "3.3.0",
+    "@clerk/react": "6.4.3"
+  }
+}

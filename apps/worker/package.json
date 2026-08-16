@@ -1,0 +1,27 @@
+{
+  "name": "@nextflow/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "trigger dev --skip-update-check",
+    "deploy": "trigger deploy",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nextflow/db": "*",
+    "@nextflow/shared": "*",
+    "@trigger.dev/sdk": "4.4.6",
+    "groq-sdk": "^1.1.2",
+    "transloadit": "^4.9.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@trigger.dev/build": "4.4.6",
+    "@types/node": "^20",
+    "eslint": "^9",
+    "trigger.dev": "4.4.6",
+    "typescript": "^5",
+    "typescript-eslint": "^8"
+  }
+}

@@ -25,7 +25,7 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 ### Key Features
 
 - 🧩 **Visual Node Editor** — Drag-and-drop interface built on React Flow
-- 🤖 **LLM Integration** — Run prompts through Groq (Llama, Mixtral models) with markdown-rendered responses
+- 🤖 **LLM Integration** — Run prompts through Groq (GPT-OSS, Qwen vision) with markdown-rendered responses
 - 🎨 **AI Image Generation** — Generate high-quality images using Pollinations.ai with style presets and aspect ratio control
 - ✨ **Prompt Enhancement** — Automatically optimize simple prompts into high-fidelity image generation instructions
 - 🪄 **NL Workflow Builder** — Describe a workflow in plain English and let AI build the nodes and connections for you
@@ -56,7 +56,7 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 | **Database** | [PostgreSQL](https://postgresql.org) via [Neon](https://neon.tech) |
 | **ORM** | [Prisma](https://prisma.io) |
 | **Background Jobs** | [Trigger.dev v4](https://trigger.dev) |
-| **LLM** | [Groq API](https://groq.com) (Llama 3.1, Mixtral) |
+| **LLM** | [Groq API](https://groq.com) (GPT-OSS, Qwen vision) |
 | **Image Generation** | [Pollinations.ai](https://pollinations.ai) |
 | **Image/Video** | [Transloadit](https://transloadit.com) |
 | **Icons** | [Lucide React](https://lucide.dev) |
@@ -112,117 +112,100 @@ NextFlow is a **visual AI workflow builder** that lets you create automated pipe
 
 ### 1. Clone & Install
 
+NextFlow is an npm-workspaces monorepo: `apps/web` (the Next.js app, deploys to Vercel) and `apps/worker` (Trigger.dev task definitions, deploys to Trigger.dev Cloud) each have their own dependencies and env vars, and share code through `packages/db` (Prisma) and `packages/shared` (types, cycle-detection graph logic). One install at the root sets up everything:
+
 ```bash
 git clone https://github.com/IshanMaheshwari-777/NextFlow.git
-cd NextFlow/nextflow
+cd NextFlow
 npm install
 ```
 
 ### 2. Environment Variables
 
-Create a `.env` file inside the `nextflow/` directory:
+Each app has its own env file — copy the `.env.example` in each and fill it in:
 
-```env
-# Database (Neon Postgres)
-DATABASE_URL="postgresql://..."
-
-# Clerk Auth
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_..."
-CLERK_SECRET_KEY="sk_..."
-NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
-NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/"
-
-# Groq LLM
-GROQ_API_KEY="gsk_..."
-
-# Transloadit (Image/Video processing)
-TRANSLOADIT_AUTH_KEY="..."
-TRANSLOADIT_AUTH_SECRET="..."
-
-# Trigger.dev (Background jobs)
-TRIGGER_SECRET_KEY="tr_dev_..."
-TRIGGER_PROJECT_REF="proj_..."
+```bash
+cp apps/web/.env.example apps/web/.env
+cp apps/worker/.env.example apps/worker/.env
 ```
+
+`apps/web/.env` needs `DATABASE_URL`, the Clerk vars, and `TRIGGER_SECRET_KEY` (used to trigger/poll runs — not to execute them). `apps/worker/.env` needs `DATABASE_URL`, `GROQ_API_KEY`, `TRANSLOADIT_AUTH_KEY`/`TRANSLOADIT_AUTH_SECRET`, and both `TRIGGER_SECRET_KEY`/`TRIGGER_PROJECT_REF` — it's the one that actually executes tasks. Both point at the same database.
 
 ### 3. Database Setup
 
+Prisma lives in `packages/db`; `npm install` at the root already ran `prisma generate` via its `postinstall`. Push the schema:
+
 ```bash
-npx prisma generate
-npx prisma db push
+npm run build --workspace=packages/db
+npx prisma db push --schema packages/db/prisma/schema.prisma
 ```
 
 ### 4. Run Development Server
 
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-To run Trigger.dev tasks locally (in a separate terminal):
+Both the Next.js app and the Trigger.dev worker need to be running at the same time — workflow runs won't execute otherwise. One command starts both:
 
 ```bash
-npx trigger.dev dev
+npm run dev:all
 ```
+
+Open [http://localhost:3000](http://localhost:3000). Or run them separately in two terminals with `npm run dev` and `npm run dev:trigger`.
 
 ---
 
-## Deploying to Vercel
+## Deploying
 
-### Important: Set Root Directory
-
-Since the Next.js app lives inside `nextflow/`, you **must** configure Vercel:
+### Vercel (frontend + API)
 
 1. Go to **Vercel → New Project → Import your GitHub repo**
-2. Set **Root Directory** to `nextflow`
-3. Framework Preset will auto-detect **Next.js**
-4. Add all environment variables from `.env` to the Vercel dashboard
-5. Deploy
+2. Set **Root Directory** to `apps/web`
+3. Since `apps/web` imports from `packages/db`/`packages/shared` outside its own directory, explicitly verify Vercel's "include files outside Root Directory" setting is on rather than assuming auto-detection catches it
+4. Framework Preset will auto-detect **Next.js**
+5. Add `apps/web/.env`'s variables to the Vercel dashboard
+6. Deploy
 
-### Trigger.dev (Backend)
+### Trigger.dev Cloud (background tasks)
 
-Trigger.dev is deployed separately on [Trigger.dev Cloud](https://cloud.trigger.dev). Deploy tasks with:
+Deployed separately from `apps/worker`, and needs its **own** copy of env vars set in the [Trigger.dev dashboard](https://cloud.trigger.dev) (Project Settings → Environment Variables) — Vercel's env vars aren't visible to it:
 
 ```bash
-cd nextflow
+cd apps/worker
 npx trigger.dev deploy
 ```
+
+Redeploy the worker any time task code under `apps/worker/src/trigger/` changes — pushing to GitHub alone only redeploys the Vercel side.
 
 ---
 
 ## Project Structure
 
 ```
-nextflow/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/             # Sign-in / Sign-up pages
-│   │   ├── api/                # API routes (workflow CRUD, run)
-│   │   ├── dashboard/          # Workflow management dashboard
-│   │   ├── workflow/[id]/      # Workflow editor page
-│   │   ├── layout.tsx          # Root layout (Clerk + theme)
-│   │   ├── page.tsx            # Landing page / Entry
-│   │   └── globals.css         # Design system tokens
-│   ├── components/
-│   │   ├── canvas/             # WorkflowEditor, WorkflowCanvas
-│   │   ├── layout/             # TopBar, LeftSidebar, RunHistoryPanel
-│   │   └── nodes/              # BaseNode, TextNode, LLMNode, etc.
-│   ├── store/                  # Zustand workflow store (undo/redo, etc.)
-│   ├── trigger/                # Trigger.dev task definitions
-│   │   ├── llmTask.ts          # Groq LLM execution
-│   │   ├── uploadTasks.ts      # Image/Video upload to Transloadit
-│   │   ├── cropImageTask.ts    # Image cropping
-│   │   └── extractFrameTask.ts # Video frame extraction
-│   ├── lib/                    # Prisma DB client, utils, sample workflows
-│   └── types/                  # TypeScript types, node definitions
-├── prisma/
-│   └── schema.prisma           # Database schema
-├── trigger.config.ts           # Trigger.dev config
-├── next.config.js              # Next.js config
-├── tailwind.config.js          # Tailwind config
-└── package.json
+NextFlow/
+├── apps/
+│   ├── web/                        # Next.js app — deploys to Vercel
+│   │   └── src/
+│   │       ├── app/                # App Router: pages + API routes (workflow CRUD, run)
+│   │       ├── components/
+│   │       │   ├── canvas/         # WorkflowEditor, WorkflowCanvas
+│   │       │   ├── layout/         # TopBar, LeftSidebar, RunHistoryPanel
+│   │       │   └── nodes/          # BaseNode, TextNode, LLMNode, etc.
+│   │       ├── store/              # Zustand workflow store (undo/redo, etc.)
+│   │       ├── lib/                # Web-only: nodeRegistry, rateLimit, sampleWorkflow, etc.
+│   │       └── middleware.ts       # Clerk auth
+│   └── worker/                     # Trigger.dev tasks — deploys to Trigger.dev Cloud
+│       ├── src/
+│       │   ├── trigger/
+│       │   │   ├── llmTask.ts          # Groq LLM execution
+│       │   │   ├── uploadTasks.ts      # Image/Video upload to Transloadit
+│       │   │   ├── cropImageTask.ts    # Image cropping
+│       │   │   ├── extractFrameTask.ts # Video frame extraction
+│       │   │   └── runWorkflowTask.ts  # Orchestrates a full workflow run
+│       │   └── lib/env.ts          # Worker-only env validation
+│       └── trigger.config.ts
+├── packages/
+│   ├── db/                         # Prisma schema + client, shared by both apps
+│   └── shared/                     # Types, cycle-detection graph logic, shared by both apps
+├── .github/workflows/ci.yml
+└── package.json                    # npm workspaces root
 ```
 
 ---
