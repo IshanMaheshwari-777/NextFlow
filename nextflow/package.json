@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:trigger": "trigger dev --skip-update-check",
+    "dev:all": "concurrently -n next,trigger -c blue,magenta \"npm:dev\" \"npm:dev:trigger\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -38,10 +40,12 @@
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "@vitest/ui": "^4.1.10",
+    "concurrently": "^10.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
+    "trigger.dev": "^4.4.6",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
