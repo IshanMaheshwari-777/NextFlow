@@ -222,6 +222,7 @@ NextFlow/
 | **Enhance Prompt** | Optimize prompts | `prompt` | `text` |
 | **Crop Image** | Crop image by % | `imageUrl` | `imageUrl` |
 | **Extract Frame** | Extract video frame | `videoUrl` | `imageUrl` |
+| **Video Enhance** | Upscale & sharpen video | `videoUrl` | `videoUrl` |
 
 ---
 

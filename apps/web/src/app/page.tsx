@@ -112,7 +112,7 @@ export default async function LandingPage() {
                         <Cpu size={16} /> AI Intelligence
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "24px", fontSize: "13px" }}>
-                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Run LLM (Llama 3) <span className="opacity-50">›</span></span>
+                        <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Run LLM (GPT-OSS) <span className="opacity-50">›</span></span>
                         <span className="text-white/60 hover:text-white transition-colors cursor-pointer">Prompt Engineering <span className="opacity-50">›</span></span>
                       </div>
                     </div>
