@@ -5,7 +5,7 @@ import { NodeProps } from "@xyflow/react";
 import { Sparkles } from "lucide-react";
 import BaseNode from "./BaseNode";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { GROQ_MODELS } from "@/types";
+import { GROQ_MODELS, GROQ_DEFAULT_TEXT_MODEL } from "@/types";
 
 /* ---------------- SIMPLE MARKDOWN RENDERER ---------------- */
 
@@ -315,7 +315,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         </label>
         <select
           className="node-input"
-          value={d.model || "llama-3.1-8b-instant"}
+          value={d.model || GROQ_DEFAULT_TEXT_MODEL}
           onChange={(e) => updateNodeData(id, { model: e.target.value })}
         >
           {GROQ_MODELS.map((m) => (
@@ -371,7 +371,7 @@ export default memo(function LLMNode({ id, data, selected }: NodeProps) {
         <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span className="text-[10px] text-emerald-400">
-            Image input connected — auto-uses Scout vision
+            Image input connected — auto-uses Qwen vision
           </span>
         </div>
       )}

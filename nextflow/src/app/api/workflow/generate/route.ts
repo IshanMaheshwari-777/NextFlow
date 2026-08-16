@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { GROQ_DEFAULT_TEXT_MODEL } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -85,7 +86,7 @@ EXAMPLE: A workflow that enhances a prompt and generates an image:
 Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no explanation.`;
 
     const handle = await tasks.trigger("llm-node", {
-      model: "llama-3.1-8b-instant",
+      model: GROQ_DEFAULT_TEXT_MODEL,
       system_prompt: systemPrompt,
       user_message: `Generate a workflow for: ${prompt}`,
     });

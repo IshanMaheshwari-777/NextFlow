@@ -1,11 +1,9 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import Groq from "groq-sdk";
 import { getEnv } from "../lib/env";
+import { GROQ_MODELS, GROQ_DEFAULT_TEXT_MODEL, GROQ_VISION_MODEL } from "../types";
 
-const GROQ_MODELS: Record<string, string> = {
-  "llama-3.1-8b-instant": "llama-3.1-8b-instant",
-  "meta-llama/llama-4-scout-17b-16e-instruct": "meta-llama/llama-4-scout-17b-16e-instruct",
-};
+const ALLOWED_MODEL_IDS = new Set<string>(GROQ_MODELS.map(m => m.id));
 
 export const llmTask = task({
   id: "llm-node",
@@ -17,10 +15,8 @@ export const llmTask = task({
 
     const hasImages = images && images.length > 0;
     // Only ever pass an allowlisted model id to Groq — never the raw client-supplied string.
-    const selectedModel = GROQ_MODELS[model] || "llama-3.1-8b-instant";
-    const finalModel = hasImages
-      ? "meta-llama/llama-4-scout-17b-16e-instruct"
-      : selectedModel;
+    const selectedModel = ALLOWED_MODEL_IDS.has(model) ? model : GROQ_DEFAULT_TEXT_MODEL;
+    const finalModel = hasImages ? GROQ_VISION_MODEL : selectedModel;
 
     logger.info("LLM task started", { nodeId, model: finalModel, hasImages, imageCount: images.length });
 

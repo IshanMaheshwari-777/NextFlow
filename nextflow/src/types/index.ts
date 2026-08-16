@@ -19,9 +19,15 @@ export type NodeRunRecord = { id: string; nodeId: string; nodeType: string; node
 export type WorkflowRunRecord = { id: string; workflowId: string; status: string; runMode: string; selectedNodeIds: string[]; startedAt: string; completedAt?: string; duration?: number; error?: string; nodeRuns: NodeRunRecord[]; createdAt: string };
 
 export const GROQ_MODELS = [
-  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Fast)" },
-  { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout (Vision)" },
+  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B (Fast)" },
+  { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B (Powerful)" },
+  { id: "qwen/qwen3.6-27b", label: "Qwen3.6 27B (Vision)" },
 ] as const;
+
+// Single source of truth for defaults so the text/vision model choice can't drift
+// between the client dropdown, the trigger tasks, and the sample workflow data.
+export const GROQ_DEFAULT_TEXT_MODEL = "openai/gpt-oss-20b";
+export const GROQ_VISION_MODEL = "qwen/qwen3.6-27b";
 
 export const NODE_HANDLES: Record<NodeType, { inputs: HandleDef[]; outputs: HandleDef[] }> = {
   text: { inputs: [], outputs: [{ id: "output", label: "Text", type: "text" }] },
@@ -43,7 +49,7 @@ export const SIDEBAR_NODES = [
   { type: "text" as NodeType, label: "Text", description: "Simple text input", icon: "Type", color: "#6366f1" },
   { type: "upload-image" as NodeType, label: "Upload Image", description: "jpg, png, webp, gif", icon: "Image", color: "#10b981" },
   { type: "upload-video" as NodeType, label: "Upload Video", description: "mp4, mov, webm, mkv", icon: "Video", color: "#f59e0b" },
-  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (Llama / Scout Vision)", icon: "Sparkles", color: "var(--text)" },
+  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (GPT-OSS / Qwen Vision)", icon: "Sparkles", color: "var(--text)" },
   { type: "crop-image" as NodeType, label: "Crop Image", description: "Trim to region", icon: "Crop", color: "#ef4444" },
   { type: "extract-frame" as NodeType, label: "Extract Frame", description: "Frame from video", icon: "Film", color: "#ec4899" },
   { type: "generate-image" as NodeType, label: "Generate Image", description: "Pollinations.ai / Flux", icon: "ImagePlus", color: "#f43f5e" },

@@ -2,6 +2,7 @@ import { task, tasks, runs, logger } from "@trigger.dev/sdk/v3";
 import { prisma, withRetry } from "../lib/prisma";
 import { findCyclicNodeIds } from "../lib/graph";
 import { topologicalSort, resolveInputs as resolveInputsPure, type AppNode, type AppEdge } from "../lib/workflowExecution";
+import { GROQ_DEFAULT_TEXT_MODEL, GROQ_VISION_MODEL } from "../types";
 
 export { topologicalSort };
 
@@ -80,8 +81,8 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       const userMsg = inputs.user_message || inputs.output;
       const finalMsg = userMsg && typeof userMsg === "string" && userMsg.trim().length > 0 ? userMsg : "Hello";
       const hasImages = images && images.length > 0;
-      const baseModel = inputs.model || "llama-3.1-8b-instant";
-      const model = hasImages ? "meta-llama/llama-4-scout-17b-16e-instruct" : baseModel;
+      const baseModel = inputs.model || GROQ_DEFAULT_TEXT_MODEL;
+      const model = hasImages ? GROQ_VISION_MODEL : baseModel;
       const r = await triggerPolled("llm-node", { ...base, model, system_prompt: inputs.system_prompt, user_message: finalMsg, images });
       if (!r.ok) throw new Error(`LLM failed: ${r.error}`);
       const o = r.output as { text?: string };
@@ -211,7 +212,7 @@ CONSTRAINTS:
 Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt}"`;
       }
 
-      const r = await triggerPolled("llm-node", { ...base, model: "llama-3.1-8b-instant", system_prompt: systemPrompt, user_message: rawPrompt });
+      const r = await triggerPolled("llm-node", { ...base, model: GROQ_DEFAULT_TEXT_MODEL, system_prompt: systemPrompt, user_message: rawPrompt });
       if (!r.ok) throw new Error(`Prompt enhancement failed: ${r.error}`);
 
       let text = (r.output as { text?: string })?.text || "";

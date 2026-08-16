@@ -1,4 +1,4 @@
-import { AppNode, AppEdge } from "@/types";
+import { AppNode, AppEdge, GROQ_DEFAULT_TEXT_MODEL } from "@/types";
 
 export const SAMPLE_NODES: AppNode[] = [
   {
@@ -34,7 +34,7 @@ export const SAMPLE_NODES: AppNode[] = [
     position: { x: 720, y: 60 },
     data: {
       label: "Product Copywriter",
-      model: "llama-3.3-8b-instant",
+      model: GROQ_DEFAULT_TEXT_MODEL,
       system_prompt: "You are a world-class e-commerce copywriter. Based on the product image provided, write a compelling 3-sentence product description that highlights benefits, creates desire, and ends with a subtle call to action. Be specific and persuasive.",
       user_message: "Describe this product and write a marketing description.",
       runStatus: "idle",
@@ -71,7 +71,7 @@ export const SAMPLE_NODES: AppNode[] = [
     position: { x: 720, y: 440 },
     data: {
       label: "Launch Post Writer",
-      model: "llama-3.1-8b-instant",
+      model: GROQ_DEFAULT_TEXT_MODEL,
       system_prompt: "You are a senior social media manager. You will receive a product image from a demo video frame. Write a compelling LinkedIn launch post with a strong hook, key benefits, a call to action, and 3 hashtags. Maximum 150 words.",
       user_message: "Write a product launch post based on this product demo frame.",
       runStatus: "idle",
