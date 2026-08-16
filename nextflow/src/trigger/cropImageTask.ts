@@ -1,6 +1,7 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
 import { getEnv } from "../lib/env";
+import { HTTP_IMPORT_HEADERS } from "./transloaditHeaders";
 
 async function getImageDimensions(url: string): Promise<{ width: number; height: number }> {
   const res = await fetch(url); const bytes = new Uint8Array(await res.arrayBuffer());
@@ -56,7 +57,7 @@ export const cropImageTask = task({
     const assembly = await client.createAssembly({
       params: {
         steps: {
-          imported: { robot: "/http/import", url: imageUrl },
+          imported: { robot: "/http/import", url: imageUrl, headers: HTTP_IMPORT_HEADERS },
           cropped: {
             robot: "/image/resize",
             use: "imported",

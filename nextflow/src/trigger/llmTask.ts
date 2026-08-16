@@ -52,12 +52,20 @@ export const llmTask = task({
       });
     }
 
+    // openai/gpt-oss-* and qwen/* are reasoning models that otherwise leak <think>...</think>
+    // into message.content. gpt-oss only understands include_reasoning; everything else uses
+    // reasoning_format — passing both together is rejected, so pick per model family.
+    const reasoningParams = finalModel.startsWith("openai/gpt-oss")
+      ? { include_reasoning: false as const }
+      : { reasoning_format: "hidden" as const };
+
     try {
       const apiStart = Date.now();
       const response = await groq.chat.completions.create({
         model: finalModel,
         messages,
         max_tokens: 4096,
+        ...reasoningParams,
         // temperature:0,
       });
       const apiTime = Date.now() - apiStart;

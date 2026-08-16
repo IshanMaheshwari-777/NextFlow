@@ -2,6 +2,7 @@ import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit, type AssemblyStatus, type CreateAssemblyOptions } from "transloadit";
 import { Readable } from "node:stream";
 import { getEnv } from "../lib/env";
+import { HTTP_IMPORT_HEADERS } from "./transloaditHeaders";
 
 function getClient() {
   const env = getEnv();
@@ -42,7 +43,7 @@ export const uploadImageTask = task({
     const opts: CreateAssemblyOptions = {
       params: {
         steps: {
-          ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl } } : {}),
+          ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl, headers: HTTP_IMPORT_HEADERS } } : {}),
           optimized: { robot: "/image/optimize", use: fileUrl ? "imported" : ":original", progressive: true },
           thumbnail: { robot: "/image/resize", use: fileUrl ? "imported" : ":original", width: 400, height: 400, resize_strategy: "fit", imagemagick_stack: "v3.0.0" },
         },
@@ -84,7 +85,7 @@ export const uploadVideoTask = task({
     const opts: CreateAssemblyOptions = {
       params: {
         steps: {
-          ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl } } : {}),
+          ...(fileUrl ? { imported: { robot: "/http/import", url: fileUrl, headers: HTTP_IMPORT_HEADERS } } : {}),
           stored: { robot: "/video/encode", use: fileUrl ? "imported" : ":original", preset: "empty", ffmpeg_stack: "v6.0.0" },
           thumbnail: { robot: "/video/thumbs", use: fileUrl ? "imported" : ":original", count: 1, ffmpeg_stack: "v6.0.0" },
         },

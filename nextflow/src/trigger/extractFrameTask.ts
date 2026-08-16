@@ -1,6 +1,7 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
 import { getEnv } from "../lib/env";
+import { HTTP_IMPORT_HEADERS } from "./transloaditHeaders";
 
 export const extractFrameTask = task({
   id: "extract-frame-node",
@@ -44,7 +45,7 @@ export const extractFrameTask = task({
 
     const env = getEnv();
     const client = new Transloadit({ authKey: env.TRANSLOADIT_AUTH_KEY, authSecret: env.TRANSLOADIT_AUTH_SECRET });
-    const assembly = await client.createAssembly({ params: { steps: { imported: { robot: "/http/import" as const, url: video_url }, frame: thumbStep } } });
+    const assembly = await client.createAssembly({ params: { steps: { imported: { robot: "/http/import" as const, url: video_url, headers: HTTP_IMPORT_HEADERS }, frame: thumbStep } } });
     const start = Date.now();
     let done: Awaited<ReturnType<typeof client.getAssembly>> | undefined;
     let delay = 500;

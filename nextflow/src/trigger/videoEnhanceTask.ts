@@ -1,6 +1,7 @@
 import { task, logger } from "@trigger.dev/sdk/v3";
 import { Transloadit } from "transloadit";
 import { getEnv } from "../lib/env";
+import { HTTP_IMPORT_HEADERS } from "./transloaditHeaders";
 
 const RESOLUTION_MAP: Record<string, { width: number; height: number }> = {
   "720p":  { width: 1280, height: 720 },
@@ -73,6 +74,7 @@ export const videoEnhanceTask = task({
           imported: {
             robot: "/http/import",
             url: video_url,
+            headers: HTTP_IMPORT_HEADERS,
           },
           enhanced: {
             robot: "/video/encode",
