@@ -252,10 +252,13 @@ export default function DashboardClient({ workflows }: { workflows: Workflow[]; 
   const [tab, setTab] = useState("Projects");
   const [isCreating, setIsCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("sidebar-collapsed") === "true";
-    return false;
-  });
+  // Server can't know the persisted collapse state; correct it once after mount
+  // rather than risk a hydration mismatch by reading localStorage during the first render.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCollapsed(localStorage.getItem("sidebar-collapsed") === "true");
+  }, []);
 
   const handleToggle = () => {
     const next = !collapsed;
