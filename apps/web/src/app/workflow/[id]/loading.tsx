@@ -1,43 +1,14 @@
+/** Editor-shaped skeleton: top bar + dotted canvas, so opening a workflow feels instant. */
 export default function WorkflowLoading() {
   return (
-    <div style={{
-      height: "100vh", width: "100vw", display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      background: "var(--canvas-bg)", position: "relative", overflow: "hidden",
-    }}>
-      {/* Ambient glow */}
-      <div style={{
-        position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)",
-        width: 500, height: 500,
-        background: "radial-gradient(circle, var(--border-subtle) 0%, transparent 70%)",
-        pointerEvents: "none", animation: "pulse 2s ease-in-out infinite",
-      }} />
-
-      {/* Logo */}
-      <div style={{
-        width: 48, height: 48, borderRadius: 14,
-        background: "var(--text)", color: "var(--bg)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: 20,
-        boxShadow: "0 0 32px rgba(0,0,0,0.1)",
-        animation: "pulse 2s ease-in-out infinite",
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
+    <div className="editor-shell" aria-busy="true" aria-label="Loading workflow">
+      <div className="topbar">
+        <div className="topbar-left"><div className="skeleton" style={{ width: 22, height: 22, borderRadius: 6, margin: "0 8px" }} /><div className="skeleton sk-line" style={{ width: 160 }} /></div>
+        <div className="topbar-right"><div className="skeleton" style={{ width: 84, height: 30, borderRadius: 8 }} /></div>
       </div>
-
-      <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", margin: 0 }}>Loading workflow...</p>
-
-      {/* Loading bar */}
-      <div style={{ width: 160, height: 2, borderRadius: 2, background: "var(--border)", marginTop: 24, overflow: "hidden" }}>
-        <div style={{ width: "35%", height: "100%", borderRadius: 2, background: "var(--text)", color: "var(--bg)", animation: "loadingBar 1.5s ease-in-out infinite" }} />
+      <div style={{ flex: 1, background: "radial-gradient(circle, var(--dot-color) 1.2px, transparent 1.2px) 0 0 / 24px 24px, var(--canvas-bg)", display: "flex", alignItems: "center", justifyContent: "center", gap: 48 }}>
+        {[0, 1, 2].map(i => <div key={i} className="skeleton" style={{ width: 220, height: 150 + i * 30, borderRadius: 14, opacity: 0.6 }} />)}
       </div>
-
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.7} }
-        @keyframes loadingBar { 0%{transform:translateX(-100%)}100%{transform:translateX(400%)} }
-      `}</style>
     </div>
   );
 }

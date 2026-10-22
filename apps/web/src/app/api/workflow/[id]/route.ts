@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma, withRetry } from "@nextflow/db";
 import { z } from "zod";
+import { withDbOutage } from "@/lib/dbErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ const patchWorkflowSchema = z.object({
   edges: z.array(edgeSchema).max(1000).optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let userId: string | null = null;
   try {
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let userId: string | null = null;
   try {
@@ -76,3 +77,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   if (count === 0) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }
+
+// Database outages (e.g. provider quota exceeded) answer 503 instead of crashing.
+export const PATCH = withDbOutage(handlePATCH);
+export const DELETE = withDbOutage(handleDELETE);

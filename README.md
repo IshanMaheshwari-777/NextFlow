@@ -154,7 +154,7 @@ Open [http://localhost:3000](http://localhost:3000). Or run them separately in t
 
 | Symptom | Cause & fix |
 |---|---|
-| Every page shows **"The database is over its plan limit"** | Neon rejects connections with *"exceeded the quota"* once a free project uses up its compute hours. Upgrade the plan, wait for the monthly reset, or point `DATABASE_URL` (in **both** `apps/web/.env` and `apps/worker/.env`) at another Postgres. |
+| Every page shows **"We'll be right back"** / Neon says *"exceeded the quota"* | Neon's free plan has a monthly compute-hour budget, and a database only sleeps after ~5 idle minutes. Older versions of this repo ran a Trigger.dev cron (`reap-stuck-runs`) every 5 minutes, which kept the database awake 24/7 and used up the whole quota with zero users. That cron is gone (stuck runs are now cleaned up when someone opens a workflow), so **redeploy the worker** (`npm run deploy --workspace=apps/worker`) to remove the old schedule from Trigger.dev. Prefer Neon's *pooled* connection string (host contains `-pooler`) for `DATABASE_URL` on Vercel. |
 | LLM nodes with an image input fail with a model error | Groq retires model ids without notice. Check `GET https://api.groq.com/openai/v1/models` and update `GROQ_VISION_MODEL` / `GROQ_MODELS` in `packages/shared/src/types.ts`. |
 | Image generation is slow or says "one image every ~45 seconds" | Pollinations' free tier allows 1 image per 45s per IP. The worker waits out the limit once and the node shows a cooldown timer. |
 | "Generation timed out — is the Trigger.dev worker running?" | Start the worker: `npm run dev:all` (or `npm run dev:trigger`). |

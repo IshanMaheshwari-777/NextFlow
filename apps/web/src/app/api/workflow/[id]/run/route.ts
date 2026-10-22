@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { prisma, withRetry } from "@nextflow/db";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { withDbOutage } from "@/lib/dbErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ type AppNode = { id: string; type: string; position: { x: number; y: number }; d
  * which isn't bound by this route's serverless request lifetime. The client polls
  * GET /api/workflow/[id]/run/[runId] for live progress instead of holding a stream open.
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let userId: string | null = null;
   try {
@@ -71,3 +72,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ runId: run.id, status: "running" }, { status: 202 });
 }
+
+// Database outages (e.g. provider quota exceeded) answer 503 instead of crashing.
+export const POST = withDbOutage(handlePOST);

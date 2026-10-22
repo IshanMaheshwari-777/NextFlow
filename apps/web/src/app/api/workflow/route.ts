@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma, withRetry } from "@nextflow/db";
 import { z } from "zod";
+import { withDbOutage } from "@/lib/dbErrors";
 
 const createWorkflowSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
@@ -13,7 +14,7 @@ const createWorkflowSchema = z.object({
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function handleGET() {
   let userId: string | null = null;
   try {
     const authResult = await auth();
@@ -26,7 +27,7 @@ export async function GET() {
   return NextResponse.json({ workflows });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   let userId: string | null = null;
   try {
     const authResult = await auth();
@@ -79,3 +80,7 @@ export async function POST(req: NextRequest) {
   const workflow = await withRetry(() => prisma.workflow.create({ data: { userId: userId as string, name: body.name || "New Workflow", nodes: [], edges: [] } }));
   return NextResponse.json(workflow, { status: 201 });
 }
+
+// Database outages (e.g. provider quota exceeded) answer 503 instead of crashing.
+export const GET = withDbOutage(handleGET);
+export const POST = withDbOutage(handlePOST);

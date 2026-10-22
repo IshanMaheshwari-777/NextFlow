@@ -71,11 +71,12 @@ RULES:
 4. targetHandle must be one of the EXACT input handle IDs listed above for that node type.
 5. Layout nodes 300px apart horizontally, stagger vertically for readability.
 6. Connect nodes logically — output types must match input types (text→text, image→image, video→video).
+7. Make the workflow runnable: give every "text" node a useful starting value in data.text (e.g. a real system prompt or an example input), and set data.user_message / data.system_prompt on "llm" nodes when nothing is connected to them. Give nodes short, descriptive labels.
 
 EXAMPLE: A workflow that enhances a prompt and generates an image:
 {
   "nodes": [
-    {"id": "text-1", "type": "text", "position": {"x": 100, "y": 200}, "data": {"label": "Prompt Input"}},
+    {"id": "text-1", "type": "text", "position": {"x": 100, "y": 200}, "data": {"label": "Your idea", "text": "a lighthouse on a cliff during a storm"}},
     {"id": "pe-1", "type": "prompt-enhancer", "position": {"x": 400, "y": 200}, "data": {"label": "Enhance Prompt"}},
     {"id": "gi-1", "type": "generate-image", "position": {"x": 700, "y": 200}, "data": {"label": "Generate Image"}}
   ],

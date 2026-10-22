@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { AppNode, AppEdge, WorkflowRunRecord } from "@nextflow/shared/types";
 import WorkflowCanvas from "./WorkflowCanvas";
@@ -8,6 +9,8 @@ import TopBar from "@/components/layout/TopBar";
 import NodePicker from "@/components/layout/NodePicker";
 import RunHistoryPanel from "@/components/layout/RunHistoryPanel";
 import AIGenerateModal from "@/components/layout/AIGenerateModal";
+import NodePalette from "@/components/layout/NodePalette";
+import { useAddNode } from "@/lib/useAddNode";
 import { Toaster, toast } from "@/components/ui/toast";
 import { useWorkflowRunner } from "@/lib/useWorkflowRunner";
 import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sampleWorkflow";
@@ -43,6 +46,19 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
   const [picker, setPicker] = useState<{ open: boolean; pos: { x: number; y: number } | null }>({ open: false, pos: null });
   const [showHistory, setShowHistory] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
+  // "Describe a workflow" on the dashboard lands here with ?ai=<prompt>: open the AI dialog
+  // pre-filled and start generating straight away, then drop the param so a reload doesn't repeat it.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [aiSeed, setAiSeed] = useState<string | null>(null);
+  useEffect(() => {
+    const p = searchParams.get("ai");
+    if (!p || !ready) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot hand-off from the dashboard URL
+    setAiSeed(p);
+    setShowGenerate(true);
+    router.replace(`/workflow/${workflow.id}`, { scroll: false });
+  }, [searchParams, ready, router, workflow.id]);
   const lastSaved = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loaded = useRef(false);
@@ -150,19 +166,28 @@ export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
           onGenerateOpen={() => setShowGenerate(true)}
           onSaveNow={() => save()}
         />
-        <div style={{ flex: 1, position: "relative", minHeight: 0 }} onContextMenu={onContextMenu}>
+        <div className="editor-body">
+          <PaletteSlot />
+          <div style={{ flex: 1, position: "relative", minWidth: 0 }} onContextMenu={onContextMenu}>
           <WorkflowCanvas
             onAddNode={pos => setPicker({ open: true, pos: pos ?? null })}
             onGenerate={() => setShowGenerate(true)}
             onLoadTemplate={loadTemplate}
           />
+          </div>
         </div>
       </div>
 
       <NodePicker open={picker.open} position={picker.pos} onClose={() => setPicker({ open: false, pos: null })} />
       <RunHistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
-      <AIGenerateModal open={showGenerate} onClose={() => setShowGenerate(false)} />
+      <AIGenerateModal open={showGenerate} onClose={() => { setShowGenerate(false); setAiSeed(null); }} initialPrompt={aiSeed} autoStart={!!aiSeed} />
       <Toaster />
     </ReactFlowProvider>
   );
+}
+
+/** Lives inside ReactFlowProvider so the palette can place nodes via the flow instance. */
+function PaletteSlot() {
+  const addAt = useAddNode();
+  return <NodePalette onAdd={type => addAt(type)} />;
 }

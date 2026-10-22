@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { NODE_HANDLES, NodeType, HANDLE_COMPAT, HANDLE_COLORS, AppNode, AppEdge } from "@nextflow/shared/types";
@@ -27,16 +27,18 @@ const HANDLE_ALIASES: Record<string, string> = {
   out: "output", result: "output",
 };
 
-export default function AIGenerateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function AIGenerateModal({ open, onClose, initialPrompt, autoStart }: { open: boolean; onClose: () => void; initialPrompt?: string | null; autoStart?: boolean }) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoStarted = useRef<string | null>(null);
 
-  const handleGenerate = async () => {
-    if (!prompt.trim() || loading) return;
+  const handleGenerate = () => generate(prompt);
+  const generate = async (text: string) => {
+    if (!text.trim() || loading) return;
     setLoading(true); setError(null);
     try {
-      const res = await fetch("/api/workflow/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt.trim() }) });
+      const res = await fetch("/api/workflow/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: text.trim() }) });
       const data: { nodes?: RawNode[]; edges?: RawEdge[]; error?: string } = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Generation failed (${res.status})`);
       const added = applyGenerated(data.nodes ?? [], data.edges ?? []);
@@ -48,6 +50,16 @@ export default function AIGenerateModal({ open, onClose }: { open: boolean; onCl
       setError(e instanceof Error ? e.message : "Generation failed");
     } finally { setLoading(false); }
   };
+
+  // Seeded from the dashboard: fill the prompt and kick off generation once.
+  useEffect(() => {
+    if (!open || !initialPrompt || autoStarted.current === initialPrompt) return;
+    autoStarted.current = initialPrompt;
+     
+    setPrompt(initialPrompt);
+    if (autoStart) void generate(initialPrompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialPrompt, autoStart]);
 
   return (
     <Modal open={open} onClose={() => { if (!loading) onClose(); }} title="Generate a workflow with AI" subtitle="Describe what you want — AI picks the nodes and wires them up." width={520}>

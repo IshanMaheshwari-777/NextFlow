@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
@@ -65,7 +66,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <html lang="en" suppressHydrationWarning>
         <head>
-          <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+          {/* beforeInteractive runs ahead of hydration, so the saved theme applies with no flash. */}
+          <Script id="theme-init" strategy="beforeInteractive">{themeScript}</Script>
         </head>
         <body suppressHydrationWarning className={`${inter.className} ${inter.variable} antialiased`}>
           {children}

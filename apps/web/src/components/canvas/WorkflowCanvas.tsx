@@ -17,6 +17,8 @@ import PromptEnhancerNode from "@/components/nodes/PromptEnhancerNode";
 import VideoEnhanceNode from "@/components/nodes/VideoEnhanceNode";
 import DeletableEdge from "./DeletableEdge";
 import { Modal } from "@/components/ui/Modal";
+import { NODE_DRAG_MIME } from "@/components/layout/NodePalette";
+import { useAddNode } from "@/lib/useAddNode";
 import { toast } from "@/components/ui/toast";
 
 const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode, "video-enhance": VideoEnhanceNode };
@@ -105,6 +107,20 @@ export default function WorkflowCanvas({ onAddNode, onGenerate, onLoadTemplate }
     if (reason) toast.warning(reason);
   }, [onConnect]);
 
+  // Drop target for the node library: the node lands exactly where it's released.
+  const addAt = useAddNode();
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(NODE_DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+  const onDrop = useCallback((e: React.DragEvent) => {
+    const type = e.dataTransfer.getData(NODE_DRAG_MIME) as NodeType;
+    if (!type) return;
+    e.preventDefault();
+    addAt(type, { x: e.clientX, y: e.clientY }, true);
+  }, [addAt]);
+
   const onPaneDoubleClick = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".react-flow__node, .react-flow__edge, button, input, textarea")) return;
     onAddNode({ x: e.clientX, y: e.clientY });
@@ -113,7 +129,7 @@ export default function WorkflowCanvas({ onAddNode, onGenerate, onLoadTemplate }
   const ctxNode = ctxMenu ? nodes.find(n => n.id === ctxMenu.id) : null;
 
   return (
-    <div ref={wrapperRef} className="canvas-wrap" onDoubleClick={onPaneDoubleClick}>
+    <div ref={wrapperRef} className="canvas-wrap" onDoubleClick={onPaneDoubleClick} onDragOver={onDragOver} onDrop={onDrop}>
       {nodes.length === 0 && (
         <div className="canvas-empty">
           <h2>Start building your workflow</h2>

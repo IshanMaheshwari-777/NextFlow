@@ -1,7 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
-import { prisma, withRetry } from "@nextflow/db";
-import WorkflowEditor from "@/components/canvas/WorkflowEditor"
+import { prisma, withRetry, reapStuckRuns } from "@nextflow/db";
+import WorkflowEditor from "@/components/canvas/WorkflowEditor";
+import { classifyDbError } from "@/lib/dbErrors";
+import ServiceUnavailable from "@/components/ServiceUnavailable";
 
 export const dynamic = "force-dynamic";
 
@@ -17,30 +19,38 @@ export default async function WorkflowPage({ params }: { params: Promise<{ id: s
 
   if (!userId) redirect("/sign-in");
 
-  // A DB fetch failure here throws and is caught by the nearest error.tsx boundary
-  // (src/app/error.tsx), which has its own retry action — no need to duplicate that
-  // fallback UI here.
-  const [workflow, allWorkflows] = await Promise.all([
-    withRetry(() =>
-      prisma.workflow.findFirst({
-        where: { id, userId: userId as string },
-        include: {
-          workflowRuns: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-            include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
+  let result;
+  try {
+    // Lazily fail runs whose worker died (replaces the old 5-minute cron that kept the DB awake).
+    await reapStuckRuns({ userId: userId as string, workflowId: id });
+    result = await Promise.all([
+      withRetry(() =>
+        prisma.workflow.findFirst({
+          where: { id, userId: userId as string },
+          include: {
+            workflowRuns: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
+              include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
+            },
           },
-        },
-      })
-    ),
-    withRetry(() =>
-      prisma.workflow.findMany({
-        where: { userId: userId as string },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true, name: true, updatedAt: true },
-      })
-    ),
-  ]);
+        })
+      ),
+      withRetry(() =>
+        prisma.workflow.findMany({
+          where: { userId: userId as string },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true, name: true, updatedAt: true },
+        })
+      ),
+    ]);
+  } catch (err) {
+    const outage = classifyDbError(err);
+    if (!outage) throw err;
+    console.error(`[workflow] database outage (${outage}):`, err instanceof Error ? err.message : err);
+    return <ServiceUnavailable kind={outage} retryHref={`/workflow/${id}`} />;
+  }
+  const [workflow, allWorkflows] = result;
 
   if (!workflow) notFound();
 

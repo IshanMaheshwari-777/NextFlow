@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { SIDEBAR_NODES, NodeType, NODE_HANDLES } from "@nextflow/shared/types";
-import { useWorkflowStore } from "@/store/workflowStore";
-import { useReactFlow } from "@xyflow/react";
+import { useAddNode } from "@/lib/useAddNode";
 import { Search, CornerDownLeft } from "lucide-react";
 import * as Icons from "lucide-react";
 
@@ -16,8 +15,7 @@ const iconMap = Icons as unknown as Record<string, ComponentType<{ size?: number
 type Props = { open: boolean; onClose: () => void; position?: { x: number; y: number } | null };
 
 export default function NodePicker({ open, onClose, position }: Props) {
-  const addNode = useWorkflowStore(s => s.addNode);
-  const { screenToFlowPosition, flowToScreenPosition, setCenter, getZoom } = useReactFlow();
+  const addAt = useAddNode();
   const [search, setSearch] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,31 +44,7 @@ export default function NodePicker({ open, onClose, position }: Props) {
   if (!open) return null;
 
   const handleAdd = (type: NodeType) => {
-    const at = position ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    // Offset so the node's header lands under the cursor rather than its top-left corner.
-    const p = screenToFlowPosition({ x: at.x - 140, y: at.y - 24 });
-    // Find the nearest free spot (using React Flow's measured node sizes) so the new node
-    // never lands on top of an existing one.
-    const W = 288, H = 300, GAP = 24;
-    const rects = useWorkflowStore.getState().nodes.map(n => {
-      const m = (n as { measured?: { width?: number; height?: number } }).measured;
-      return { x: n.position.x, y: n.position.y, w: m?.width ?? W, h: m?.height ?? H };
-    });
-    const free = (x: number, y: number) => rects.every(r => x + W + GAP <= r.x || r.x + r.w + GAP <= x || y + H + GAP <= r.y || r.y + r.h + GAP <= y);
-    let spot = { x: p.x, y: p.y };
-    search: for (let ring = 0; ring < 12; ring++) {
-      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-        const cand = { x: p.x + dx * ring * 80, y: p.y + dy * ring * 80 };
-        if (free(cand.x, cand.y)) { spot = cand; break search; }
-      }
-    }
-    const { x, y } = spot;
-    addNode(type, { x, y });
-    // If the free spot is off-screen, glide the camera over so the user sees what they added.
-    const tl = flowToScreenPosition({ x, y }), br = flowToScreenPosition({ x: x + W, y: y + H });
-    if (tl.x < 0 || tl.y < 52 || br.x > window.innerWidth || br.y > window.innerHeight - 70) {
-      setCenter(x + W / 2, y + H / 2, { zoom: getZoom(), duration: 300 });
-    }
+    addAt(type, position);
     onClose();
   };
 

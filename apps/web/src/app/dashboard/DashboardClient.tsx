@@ -9,8 +9,9 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import { Modal } from "@/components/ui/Modal";
 import { Toaster, toast } from "@/components/ui/toast";
 import { formatDuration, formatRelative } from "@/lib/utils";
+import GraphPreview, { type PreviewGraph } from "@/components/dashboard/GraphPreview";
 
-type Workflow = { id: string; name: string; updatedAt: string; runCount: number; nodeTypes: string[] };
+type Workflow = { id: string; name: string; updatedAt: string; runCount: number; nodeTypes: string[]; preview: PreviewGraph };
 type Run = { id: string; status: string; createdAt: string; duration: number | null; runMode: string; workflowId: string; workflow: { name: string } };
 
 const TEMPLATE_CARDS = [
@@ -45,20 +46,22 @@ export default function DashboardClient({ workflows, recentRuns, userName }: { w
   const [renaming, setRenaming] = useState<Workflow | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [deleting, setDeleting] = useState<Workflow | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? wfs.filter(w => w.name.toLowerCase().includes(q)) : wfs;
   }, [wfs, query]);
 
-  const create = async (body: Record<string, unknown>, key: string) => {
+  const create = async (body: Record<string, unknown>, key: string, aiPrompt?: string) => {
     if (busy) return;
     setBusy(key);
     try {
       const res = await fetch("/api/workflow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.id) throw new Error(data.error || `Couldn't create the workflow (${res.status})`);
-      router.push(`/workflow/${data.id}`);
+      // An AI prompt rides along to the editor, which opens "Generate with AI" and runs it.
+      router.push(`/workflow/${data.id}${aiPrompt ? `?ai=${encodeURIComponent(aiPrompt)}` : ""}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't create the workflow.");
       setBusy(null);
@@ -71,7 +74,7 @@ export default function DashboardClient({ workflows, recentRuns, userName }: { w
       const res = await fetch("/api/workflow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ duplicateOf: wf.id }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setWfs(prev => [{ id: data.id, name: data.name, updatedAt: data.updatedAt, runCount: 0, nodeTypes: wf.nodeTypes }, ...prev]);
+      setWfs(prev => [{ id: data.id, name: data.name, updatedAt: data.updatedAt, runCount: 0, nodeTypes: wf.nodeTypes, preview: wf.preview }, ...prev]);
       toast.success(`Duplicated “${wf.name}”.`);
     } catch { toast.error("Couldn't duplicate that workflow."); }
   };
@@ -118,12 +121,34 @@ export default function DashboardClient({ workflows, recentRuns, userName }: { w
             <h1>{userName ? `Welcome back, ${userName}` : "Your workflows"}</h1>
             <p>Chain LLMs, image generation and video tools into pipelines you can run with one click.</p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn btn-primary btn-lg" onClick={() => create({ name: "New Workflow" }, "blank")} disabled={!!busy}>
-              {busy === "blank" ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} />} New workflow
-            </button>
-          </div>
+          <button className="btn btn-secondary btn-lg" onClick={() => create({ name: "New Workflow" }, "blank")} disabled={!!busy}>
+            {busy === "blank" ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} />} Blank workflow
+          </button>
         </section>
+
+        <form
+          className="ai-bar"
+          onSubmit={e => {
+            e.preventDefault();
+            const p = aiPrompt.trim();
+            if (!p) return;
+            const name = p.length > 48 ? `${p.slice(0, 45).trim()}…` : p;
+            create({ name: name[0].toUpperCase() + name.slice(1) }, "ai", p);
+          }}
+        >
+          <Sparkles size={18} className="ai-bar-icon" />
+          <input
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            maxLength={1500}
+            placeholder="Describe a workflow and AI will build it…"
+            aria-label="Describe a workflow for AI to build"
+          />
+          <button type="submit" className="btn btn-primary" disabled={!aiPrompt.trim() || !!busy}>
+            {busy === "ai" ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={15} />}
+            <span className="hide-xs">Build it</span>
+          </button>
+        </form>
 
         <section className="dash-section">
           <div className="dash-section-head"><h2>Start from a template</h2></div>
@@ -170,7 +195,7 @@ export default function DashboardClient({ workflows, recentRuns, userName }: { w
                 {filtered.map(wf => (
                   <div key={wf.id} className="wf-card">
                     <Link href={`/workflow/${wf.id}`} className="wf-card-link" aria-label={`Open ${wf.name}`}>
-                      <div className="wf-preview"><NodeStrip types={wf.nodeTypes} /></div>
+                      <div className="wf-preview"><GraphPreview graph={wf.preview} /></div>
                       <div className="wf-body">
                         <span className="wf-name">{wf.name}</span>
                         <span className="wf-meta" suppressHydrationWarning>
