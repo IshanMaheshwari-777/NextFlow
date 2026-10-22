@@ -79,8 +79,10 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
     case "llm": {
       const images = inputs.images ? (Array.isArray(inputs.images) ? inputs.images : [inputs.images]) : undefined;
       const userMsg = inputs.user_message || inputs.output;
-      const finalMsg = userMsg && typeof userMsg === "string" && userMsg.trim().length > 0 ? userMsg : "Hello";
       const hasImages = images && images.length > 0;
+      const hasMsg = typeof userMsg === "string" && userMsg.trim().length > 0;
+      if (!hasMsg && !hasImages) throw new Error("No user message. Type one or connect a Text node to “User Message”.");
+      const finalMsg = hasMsg ? userMsg : "Describe this image in detail.";
       const baseModel = inputs.model || GROQ_DEFAULT_TEXT_MODEL;
       const model = hasImages ? GROQ_VISION_MODEL : baseModel;
       const r = await triggerPolled("llm-node", { ...base, model, system_prompt: inputs.system_prompt, user_message: finalMsg, images });
@@ -107,8 +109,8 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
       return { output: o.imageUrl, imageUrl: o.imageUrl, width: o.width, height: o.height };
     }
     case "generate-image": {
-      const rawPrompt = inputs.prompt || inputs.output || "";
-      if (!rawPrompt) throw new Error("No prompt provided for image generation.");
+      const rawPrompt = String(inputs.prompt || inputs.output || "");
+      if (!rawPrompt.trim()) throw new Error("No prompt provided. Type a prompt or connect a Text / Enhance Prompt node.");
 
       let sanitizedPrompt = rawPrompt.replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim();
       if (sanitizedPrompt.length > 500) sanitizedPrompt = sanitizedPrompt.slice(0, 500) + "...";
@@ -119,7 +121,7 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
         "16:9": { w: 768, h: 432 },
         "9:16": { w: 432, h: 768 },
       };
-      const { w, h } = RATIO_DIMENSIONS[inputs.aspectRatio || "1:1"];
+      const { w, h } = RATIO_DIMENSIONS[inputs.aspectRatio] ?? RATIO_DIMENSIONS["1:1"];
 
       const STYLE_SUFFIXES: Record<string, string> = {
         Default: "",
@@ -129,38 +131,51 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
         Artistic: ", oil painting, artistic, textured, creative composition",
         "Product Photography": ", product photography, white background, studio lighting, commercial",
       };
-      const suffix = STYLE_SUFFIXES[inputs.style || "Default"];
+      const suffix = STYLE_SUFFIXES[inputs.style] ?? "";
       const finalPrompt = sanitizedPrompt + suffix;
 
       const seed = Math.floor(Math.random() * 1000000) + (Date.now() % 1000);
       const model = inputs.model || "flux";
 
-      const tryGenerate = async (p: string) => {
+      // Pollinations' free tier allows 1 image per ~45s per IP and answers 402/429 with a
+      // Retry-After header. Generating also warms its cache, so the URL we return loads instantly.
+      type Attempt = { url: string } | { retryAfter: number; message: string } | { error: string };
+      const tryGenerate = async (p: string): Promise<Attempt> => {
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&model=${model}&seed=${seed}&nologo=true&private=true`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 45000);
           const res = await fetch(url, { signal: controller.signal });
+          if (res.ok) return { url };
+          if (res.status === 402 || res.status === 429) {
+            const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+            return { retryAfter: Number(res.headers.get("retry-after")) || 45, message: body?.error?.message || "Free image limit reached." };
+          }
+          return { error: `Image service returned ${res.status}` };
+        } catch (err) {
+          return { error: err instanceof Error && err.name === "AbortError" ? "Image generation timed out" : "Couldn't reach the image service" };
+        } finally {
           clearTimeout(timeoutId);
-          if (res.ok) return url;
-          return null;
-        } catch {
-          return null;
         }
       };
 
-      let finalUrl = await tryGenerate(finalPrompt);
-      if (!finalUrl) {
-        const simplified = finalPrompt.split(",").slice(0, 3).join(",").slice(0, 150);
-        finalUrl = await tryGenerate(simplified);
+      let attempt = await tryGenerate(finalPrompt);
+      if ("retryAfter" in attempt && attempt.retryAfter <= 50) {
+        logger.info("Pollinations rate-limited, waiting before retry", { retryAfter: attempt.retryAfter });
+        await new Promise(r => setTimeout(r, (attempt as { retryAfter: number }).retryAfter * 1000 + 1000));
+        attempt = await tryGenerate(finalPrompt);
+      } else if ("error" in attempt) {
+        attempt = await tryGenerate(finalPrompt);
       }
-      if (!finalUrl) throw new Error("Generation servers are busy. Please try again with a simpler prompt.");
+      if ("retryAfter" in attempt) throw new Error(`The free image service allows one image every ~45 seconds. Try again in ${attempt.retryAfter}s.`);
+      if ("error" in attempt) throw new Error(`${attempt.error}. Please try again.`);
+      const finalUrl = attempt.url;
 
       return { output: finalUrl, imageUrl: finalUrl, prompt: sanitizedPrompt, seed, width: w, height: h };
     }
     case "prompt-enhancer": {
-      const rawPrompt = inputs.prompt || inputs.output || "";
-      if (!rawPrompt) throw new Error("No prompt provided to enhance.");
+      const rawPrompt = String(inputs.prompt || inputs.output || "");
+      if (!rawPrompt.trim()) throw new Error("No prompt provided. Type a prompt or connect a Text node.");
       const style = inputs.style || "Cinematic";
 
       const targetNodeIds = edges.filter(e => e.source === node.id).map(e => e.target);
@@ -216,7 +231,9 @@ Transform this into a detailed ${style} AI image generation prompt: "${rawPrompt
       if (!r.ok) throw new Error(`Prompt enhancement failed: ${r.error}`);
 
       let text = (r.output as { text?: string })?.text || "";
-      text = text.replace(/["']/g, "").replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim();
+      // Strip wrapping quotes and line breaks only — apostrophes inside words ("don't") stay.
+      text = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
+      if (!text) throw new Error("Prompt enhancement returned an empty result. Try again.");
       return { output: text, text };
     }
     case "video-enhance": {
@@ -249,8 +266,16 @@ export const runWorkflowTask = task({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see executeNode's dynamic-dispatch note above
     const nodeOutputs = new Map<string, Record<string, any>>();
+    const activeIds = new Set(activeNodes.map(n => n.id));
     for (const n of allNodes) {
       if (n.data?.runOutput) nodeOutputs.set(n.id, n.data.runOutput);
+      // Source nodes outside a single/selected run don't need executing — their value is
+      // right there in their data, so "run just this node" works without running them first.
+      else if (!activeIds.has(n.id)) {
+        if (n.type === "text" && n.data?.text) nodeOutputs.set(n.id, { output: n.data.text });
+        if (n.type === "upload-image" && typeof n.data?.fileUrl === "string") nodeOutputs.set(n.id, { output: n.data.fileUrl, imageUrl: n.data.fileUrl });
+        if (n.type === "upload-video" && typeof n.data?.fileUrl === "string") nodeOutputs.set(n.id, { output: n.data.fileUrl, videoUrl: n.data.fileUrl });
+      }
     }
 
     const cyclic = findCyclicNodeIds(activeNodes, edges);

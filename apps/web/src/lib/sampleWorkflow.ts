@@ -4,7 +4,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-upload-image",
     type: "upload-image",
-    position: { x: 60, y: 60 },
+    position: { x: 60, y: 40 },
     data: {
       label: "Product Photo",
       fileUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600",
@@ -17,7 +17,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-crop-image",
     type: "crop-image",
-    position: { x: 440, y: 60 },
+    position: { x: 420, y: 40 },
     data: {
       label: "Crop Product",
       x_percent: 10,
@@ -31,7 +31,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-llm-copywriter",
     type: "llm",
-    position: { x: 720, y: 60 },
+    position: { x: 780, y: 0 },
     data: {
       label: "Product Copywriter",
       model: GROQ_DEFAULT_TEXT_MODEL,
@@ -44,7 +44,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-upload-video",
     type: "upload-video",
-    position: { x: 60, y: 460 },
+    position: { x: 60, y: 780 },
     data: {
       label: "Product Demo Video",
       fileUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -57,7 +57,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-extract-frame",
     type: "extract-frame",
-    position: { x: 340, y: 460 },
+    position: { x: 420, y: 800 },
     data: {
       label: "Extract Demo Frame",
       timestamp: 2,
@@ -68,7 +68,7 @@ export const SAMPLE_NODES: AppNode[] = [
   {
     id: "sample-llm-launch",
     type: "llm",
-    position: { x: 720, y: 440 },
+    position: { x: 780, y: 820 },
     data: {
       label: "Launch Post Writer",
       model: GROQ_DEFAULT_TEXT_MODEL,
@@ -87,8 +87,7 @@ export const SAMPLE_EDGES: AppEdge[] = [
     sourceHandle: "output",
     target: "sample-crop-image",
     targetHandle: "imageUrl",
-    animated: true,
-    style: { stroke: "#10b981", strokeWidth: 2 }
+    style: { stroke: "#34d399", strokeWidth: 2 }
   },
   {
     id: "e-sample-2",
@@ -96,8 +95,7 @@ export const SAMPLE_EDGES: AppEdge[] = [
     sourceHandle: "output",
     target: "sample-llm-copywriter",
     targetHandle: "images",
-    animated: true,
-    style: { stroke: "#10b981", strokeWidth: 2 }
+    style: { stroke: "#34d399", strokeWidth: 2 }
   },
   {
     id: "e-sample-4",
@@ -105,8 +103,7 @@ export const SAMPLE_EDGES: AppEdge[] = [
     sourceHandle: "output",
     target: "sample-extract-frame",
     targetHandle: "video_url",
-    animated: true,
-    style: { stroke: "#f59e0b", strokeWidth: 2 }
+    style: { stroke: "#fbbf24", strokeWidth: 2 }
   },
   {
     id: "e-sample-5",
@@ -114,8 +111,7 @@ export const SAMPLE_EDGES: AppEdge[] = [
     sourceHandle: "output",
     target: "sample-llm-launch",
     targetHandle: "images",
-    animated: true,
-    style: { stroke: "#10b981", strokeWidth: 2 }
+    style: { stroke: "#34d399", strokeWidth: 2 }
   },
   {
     id: "e-sample-6",
@@ -123,7 +119,24 @@ export const SAMPLE_EDGES: AppEdge[] = [
     sourceHandle: "output",
     target: "sample-llm-launch",
     targetHandle: "user_message",
-    animated: true,
-    style: { stroke: "#7C5CFF", strokeWidth: 2 }
+    style: { stroke: "#818cf8", strokeWidth: 2 }
   }
 ];
+
+/** Zero-setup template: works with no uploads, so it's the fastest way to see a full run. */
+export const PROMPT_TO_IMAGE_NODES: AppNode[] = [
+  { id: "tpl-idea", type: "text", position: { x: 60, y: 120 }, data: { label: "Your idea", text: "a cozy reading nook inside a treehouse at golden hour", runStatus: "idle", connectedInputs: [] } },
+  { id: "tpl-enhance", type: "prompt-enhancer", position: { x: 420, y: 80 }, data: { label: "Enhance Prompt", prompt: "", style: "Cinematic", runStatus: "idle", connectedInputs: ["prompt"] } },
+  { id: "tpl-image", type: "generate-image", position: { x: 780, y: 40 }, data: { label: "Generate Image", prompt: "", model: "flux", style: "Cinematic", aspectRatio: "16:9", runStatus: "idle", connectedInputs: ["prompt"] } },
+];
+
+export const PROMPT_TO_IMAGE_EDGES: AppEdge[] = [
+  { id: "e-tpl-1", source: "tpl-idea", sourceHandle: "output", target: "tpl-enhance", targetHandle: "prompt", style: { stroke: "#818cf8", strokeWidth: 2 } },
+  { id: "e-tpl-2", source: "tpl-enhance", sourceHandle: "output", target: "tpl-image", targetHandle: "prompt", style: { stroke: "#818cf8", strokeWidth: 2 } },
+];
+
+export const TEMPLATES = {
+  "prompt-to-image": { name: "Idea → Image", description: "Turn a one-line idea into a detailed prompt and a generated image. No uploads needed.", nodes: PROMPT_TO_IMAGE_NODES, edges: PROMPT_TO_IMAGE_EDGES },
+  "marketing-kit": { name: "Product Marketing Kit", description: "Crop a product photo, grab a frame from a demo video, and write copy for both with vision AI.", nodes: SAMPLE_NODES, edges: SAMPLE_EDGES },
+} as const;
+export type TemplateId = keyof typeof TEMPLATES;

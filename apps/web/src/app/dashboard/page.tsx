@@ -1,74 +1,57 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma, withRetry } from "@nextflow/db";
 import DashboardClient from "./DashboardClient";
-import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sampleWorkflow";
+import { TEMPLATES } from "@/lib/sampleWorkflow";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  let userId: string | null = null;
-  try {
-    const authResult = await auth();
-    userId = authResult.userId;
-  } catch (error) {
-    console.error("[Dashboard] Clerk auth error:", error);
-  }
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in?redirect_url=/dashboard");
 
-  if (!userId) redirect("/sign-in");
+  const user = await currentUser();
+  const email = user?.primaryEmailAddress?.emailAddress || `${userId}@example.com`;
 
-  // Run user upsert and workflow fetch in parallel
-  const [, allWorkflowsRaw] = await Promise.all([
-    withRetry(() =>
-      prisma.user.upsert({
-        where: { id: userId as string },
-        create: { id: userId as string, email: `${userId}@example.com` },
-        update: {},
-      })
-    ),
-    withRetry(() =>
-      prisma.workflow.findMany({
-        where: { userId: userId as string },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true, name: true, updatedAt: true, nodes: true },
-      })
-    ),
+  // A DB failure here throws into src/app/error.tsx, which explains it and offers a retry.
+  const [, workflowsRaw] = await Promise.all([
+    withRetry(() => prisma.user.upsert({ where: { id: userId }, create: { id: userId, email }, update: {} })),
+    withRetry(() => prisma.workflow.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, name: true, updatedAt: true, nodes: true, _count: { select: { workflowRuns: true } } },
+    })),
   ]);
 
-  let allWorkflows = allWorkflowsRaw;
-
-  if (allWorkflows.length === 0) {
-    const sampleWorkflow = await withRetry(() =>
-      prisma.workflow.create({
-        data: {
-          userId: userId as string,
-          name: "Product Marketing Kit Generator",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma's Json column type doesn't structurally match our node/edge shape
-          nodes: SAMPLE_NODES as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          edges: SAMPLE_EDGES as any,
-        },
-      })
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    allWorkflows = [{ id: sampleWorkflow.id, name: sampleWorkflow.name, updatedAt: sampleWorkflow.updatedAt, nodes: sampleWorkflow.nodes as any }];
+  let workflows = workflowsRaw;
+  // First visit: seed a template that runs end-to-end with zero setup, so the very first
+  // "Run" click succeeds instead of failing on a missing upload.
+  if (workflows.length === 0) {
+    const t = TEMPLATES["prompt-to-image"];
+    const created = await withRetry(() => prisma.workflow.create({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma's Json column type doesn't structurally match our node/edge shape
+      data: { userId, name: t.name, nodes: t.nodes as any, edges: t.edges as any },
+      select: { id: true, name: true, updatedAt: true, nodes: true, _count: { select: { workflowRuns: true } } },
+    }));
+    workflows = [created];
   }
 
-  // Fetch recent runs in parallel (don't block on it)
-  const recentRuns = await withRetry(() =>
-    prisma.workflowRun.findMany({
-      where: { userId: userId as string },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: {
-        id: true, status: true, createdAt: true, duration: true, runMode: true,
-        workflow: { select: { name: true } }
-      }
-    })
-  );
+  const recentRuns = await withRetry(() => prisma.workflowRun.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: { id: true, status: true, createdAt: true, duration: true, runMode: true, workflowId: true, workflow: { select: { name: true } } },
+  }));
 
-  const safeWorkflows = JSON.parse(JSON.stringify(allWorkflows));
-  const safeRuns = JSON.parse(JSON.stringify(recentRuns));
+  // Only node *types* are needed for card previews — don't ship every node's data to the client.
+  const safeWorkflows = workflows.map(w => ({
+    id: w.id,
+    name: w.name,
+    updatedAt: w.updatedAt.toISOString(),
+    runCount: w._count.workflowRuns,
+    nodeTypes: (Array.isArray(w.nodes) ? w.nodes : []).map(n => (n as { type?: string })?.type ?? "text"),
+  }));
+  const safeRuns = recentRuns.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }));
 
-  return <DashboardClient workflows={safeWorkflows} recentRuns={safeRuns} />;
+  return <DashboardClient workflows={safeWorkflows} recentRuns={safeRuns} userName={user?.firstName ?? null} />;
 }

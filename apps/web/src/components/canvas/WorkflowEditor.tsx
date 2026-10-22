@@ -2,112 +2,167 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { useShallow } from "zustand/react/shallow";
 import { AppNode, AppEdge, WorkflowRunRecord } from "@nextflow/shared/types";
 import WorkflowCanvas from "./WorkflowCanvas";
 import TopBar from "@/components/layout/TopBar";
 import NodePicker from "@/components/layout/NodePicker";
 import RunHistoryPanel from "@/components/layout/RunHistoryPanel";
+import AIGenerateModal from "@/components/layout/AIGenerateModal";
+import { Toaster, toast } from "@/components/ui/toast";
+import { useWorkflowRunner } from "@/lib/useWorkflowRunner";
+import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sampleWorkflow";
 
 type Props = {
   workflow: { id: string; name: string; nodes: AppNode[]; edges: AppEdge[]; workflowRuns: WorkflowRunRecord[] };
-  allWorkflows: { id: string; name: string; updatedAt: Date }[];
+  allWorkflows: { id: string; name: string; updatedAt: string | Date }[];
 };
 
+/** What actually gets persisted — transient UI/run-progress state is stripped. */
+function persistable(name: string, nodes: AppNode[], edges: AppEdge[]) {
+  return JSON.stringify({
+    name,
+    nodes: nodes.map(n => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { isRunning, fileData, previewUrl, ...data } = n.data;
+      return { id: n.id, type: n.type, position: n.position, data: { ...data, ...(typeof previewUrl === "string" && !previewUrl.startsWith("blob:") ? { previewUrl } : {}) } };
+    }),
+    edges: edges.map(({ id, source, sourceHandle, target, targetHandle, style }) => ({ id, source, sourceHandle, target, targetHandle, style })),
+  });
+}
+
+function isTypingTarget(t: EventTarget | null) {
+  const el = t as HTMLElement | null;
+  return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+}
+
 export default function WorkflowEditor({ workflow, allWorkflows }: Props) {
-  const { loadWorkflow, setRunHistory, nodes, edges, workflowName, workflowId, undo, redo } = useWorkflowStore(
-    useShallow(s => ({ loadWorkflow: s.loadWorkflow, setRunHistory: s.setRunHistory, nodes: s.nodes, edges: s.edges, workflowName: s.workflowName, workflowId: s.workflowId, undo: s.undo, redo: s.redo }))
-  );
-  const saveRef = useRef<NodeJS.Timeout | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const { run, progress } = useWorkflowRunner();
+  // The store is seeded in an effect; until then it holds nothing (or the previous workflow),
+  // so render nothing rather than flashing an empty canvas or the wrong graph.
+  const ready = useWorkflowStore(s => s.workflowId === workflow.id);
+  const [picker, setPicker] = useState<{ open: boolean; pos: { x: number; y: number } | null }>({ open: false, pos: null });
   const [showHistory, setShowHistory] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const lastSaved = useRef<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loaded = useRef(false);
 
-  // Intentionally keyed on workflow.id alone: this seeds the store once per navigation,
-  // not on every re-render of these prop fields.
+  // Seed the store once per navigation (and again if the store was reset, e.g. by hot reload).
   useEffect(() => {
-    loadWorkflow({ id: workflow.id, name: workflow.name, nodes: workflow.nodes, edges: workflow.edges });
-    setRunHistory(workflow.workflowRuns);
+    if (ready) return;
+    const s = useWorkflowStore.getState();
+    s.loadWorkflow({ id: workflow.id, name: workflow.name, nodes: workflow.nodes, edges: workflow.edges });
+    s.setRunHistory(workflow.workflowRuns);
+    const after = useWorkflowStore.getState();
+    lastSaved.current = persistable(after.workflowName, after.nodes, after.edges);
+    loaded.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow.id]);
+  }, [workflow.id, ready]);
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        if (e.shiftKey) { e.preventDefault(); redo(); } else { e.preventDefault(); undo(); }
-      } else if ((e.metaKey || e.ctrlKey) && e.key === "y") {
-        e.preventDefault(); redo();
-      } else if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        setPickerPos(null);
-        setShowPicker(true);
-      } else if (e.key === "Escape") {
-        setShowPicker(false);
-        setShowHistory(false);
-      }
-    };
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [undo, redo]);
-
-  const save = useCallback(async () => {
-    if (!workflowId) return;
+  const save = useCallback(async (opts?: { keepalive?: boolean }) => {
+    const s = useWorkflowStore.getState();
+    if (!s.workflowId || !loaded.current) return;
+    const body = persistable(s.workflowName, s.nodes, s.edges);
+    if (body === lastSaved.current) return;
+    s.setSaveState("saving");
     try {
-      const res = await fetch(`/api/workflow/${workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workflowName, nodes, edges }) });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
-      setSaveError(null);
+      const res = await fetch(`/api/workflow/${s.workflowId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body, keepalive: opts?.keepalive && body.length < 60_000 });
+      if (!res.ok) {
+        const msg = res.status === 413 ? "This workflow is too large to save." : `Save failed (${res.status})`;
+        throw new Error(msg);
+      }
+      lastSaved.current = body;
+      useWorkflowStore.getState().setSaveState("saved");
     } catch (err) {
       console.error("[WorkflowEditor] Autosave failed:", err);
-      setSaveError("Changes couldn't be saved — check your connection.");
+      useWorkflowStore.getState().setSaveState("error");
     }
-  }, [workflowId, workflowName, nodes, edges]);
+  }, []);
 
+  // Debounced autosave on any persistable change.
   useEffect(() => {
-    if (saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(save, 3000);
-    return () => { if (saveRef.current) clearTimeout(saveRef.current); };
+    return useWorkflowStore.subscribe((s, prev) => {
+      if (s.nodes === prev.nodes && s.edges === prev.edges && s.workflowName === prev.workflowName) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => save(), 1200);
+    });
   }, [save]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest(".react-flow__node")) return;
-    e.preventDefault();
-    setPickerPos({ x: e.clientX, y: e.clientY });
-    setShowPicker(true);
+  // Flush pending edits when the tab is hidden or closed.
+  useEffect(() => {
+    const flush = () => { if (document.visibilityState === "hidden") save({ keepalive: true }); };
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      const s = useWorkflowStore.getState();
+      if (persistable(s.workflowName, s.nodes, s.edges) !== lastSaved.current) { save({ keepalive: true }); e.preventDefault(); }
+    };
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => { document.removeEventListener("visibilitychange", flush); window.removeEventListener("beforeunload", beforeUnload); if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [save]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      const s = useWorkflowStore.getState();
+      // A dialog/picker owns the keyboard while open (⌘Enter in "AI Generate" must not also start a run).
+      if (e.defaultPrevented || document.querySelector(".modal-backdrop, .picker")) return;
+      if (mod && e.key === "Enter") { e.preventDefault(); run("full"); return; }
+      if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); save(); toast.info("Saved."); return; }
+      if (isTypingTarget(e.target)) return;
+      if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) s.redo(); else s.undo(); }
+      else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); s.redo(); }
+      else if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        const sel = s.nodes.filter(n => n.selected);
+        sel.forEach(n => s.duplicateNode(n.id));
+      }
+      else if (!mod && !e.altKey && (e.key === "n" || e.key === "N")) { e.preventDefault(); setPicker({ open: true, pos: null }); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [run, save]);
+
+  const loadTemplate = useCallback(() => {
+    const s = useWorkflowStore.getState();
+    s.saveSnapshot();
+    s.setGraph(JSON.parse(JSON.stringify(SAMPLE_NODES)), JSON.parse(JSON.stringify(SAMPLE_EDGES)));
+    if (s.workflowName === "New Workflow" || s.workflowName === "Untitled Workflow") s.setWorkflowName("Product Marketing Kit");
+    window.dispatchEvent(new Event("canvas-fit-view"));
+    toast.success("Template loaded — press Run to try it.");
   }, []);
+
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".react-flow__node, .react-flow__edge, .canvas-toolbar, .react-flow__minimap")) return;
+    e.preventDefault();
+    setPicker({ open: true, pos: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  if (!ready) return <div className="editor-shell" aria-busy="true" />;
 
   return (
     <ReactFlowProvider>
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--canvas-bg)" }}>
-        <TopBar allWorkflows={allWorkflows} onHistoryOpen={() => setShowHistory(true)} />
-        <div style={{ flex: 1, position: "relative", minHeight: 0 }} onContextMenu={handleContextMenu}>
-          <WorkflowCanvas onAddNode={() => { setPickerPos(null); setShowPicker(true); }} />
+      <div className="editor-shell">
+        <TopBar
+          allWorkflows={allWorkflows}
+          progress={progress}
+          onRun={run}
+          onHistoryOpen={() => setShowHistory(true)}
+          onGenerateOpen={() => setShowGenerate(true)}
+          onSaveNow={() => save()}
+        />
+        <div style={{ flex: 1, position: "relative", minHeight: 0 }} onContextMenu={onContextMenu}>
+          <WorkflowCanvas
+            onAddNode={pos => setPicker({ open: true, pos: pos ?? null })}
+            onGenerate={() => setShowGenerate(true)}
+            onLoadTemplate={loadTemplate}
+          />
         </div>
       </div>
 
-      <NodePicker
-        open={showPicker}
-        onClose={() => { setShowPicker(false); setPickerPos(null); }}
-        position={pickerPos}
-      />
-
+      <NodePicker open={picker.open} position={picker.pos} onClose={() => setPicker({ open: false, pos: null })} />
       <RunHistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
-
-      {saveError && (
-        <div
-          role="status"
-          style={{
-            position: "fixed", bottom: 20, left: 20, zIndex: 9999,
-            display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10,
-            background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)",
-            backdropFilter: "blur(12px)", fontSize: 12, color: "#f87171", fontWeight: 500,
-          }}
-        >
-          {saveError}
-        </div>
-      )}
+      <AIGenerateModal open={showGenerate} onClose={() => setShowGenerate(false)} />
+      <Toaster />
     </ReactFlowProvider>
   );
 }

@@ -21,13 +21,15 @@ export type WorkflowRunRecord = { id: string; workflowId: string; status: string
 export const GROQ_MODELS = [
   { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B (Fast)" },
   { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B (Powerful)" },
-  { id: "qwen/qwen3.6-27b", label: "Qwen3.6 27B (Vision)" },
+  { id: "qwen/qwen3.8-27b", label: "Qwen3.8 27B (Vision)" },
 ] as const;
 
 // Single source of truth for defaults so the text/vision model choice can't drift
 // between the client dropdown, the trigger tasks, and the sample workflow data.
+// Groq retires model ids without notice (qwen3.6 → qwen3.8) — check
+// `GET https://api.groq.com/openai/v1/models` if image nodes start failing.
 export const GROQ_DEFAULT_TEXT_MODEL = "openai/gpt-oss-20b";
-export const GROQ_VISION_MODEL = "qwen/qwen3.6-27b";
+export const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
 
 export const NODE_HANDLES: Record<NodeType, { inputs: HandleDef[]; outputs: HandleDef[] }> = {
   text: { inputs: [], outputs: [{ id: "output", label: "Text", type: "text" }] },
@@ -49,10 +51,18 @@ export const SIDEBAR_NODES = [
   { type: "text" as NodeType, label: "Text", description: "Simple text input", icon: "Type", color: "#6366f1" },
   { type: "upload-image" as NodeType, label: "Upload Image", description: "jpg, png, webp, gif", icon: "Image", color: "#10b981" },
   { type: "upload-video" as NodeType, label: "Upload Video", description: "mp4, mov, webm, mkv", icon: "Video", color: "#f59e0b" },
-  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (GPT-OSS / Qwen Vision)", icon: "Sparkles", color: "var(--text)" },
+  { type: "llm" as NodeType, label: "Run LLM", description: "Groq (GPT-OSS / Qwen Vision)", icon: "Sparkles", color: "#a78bfa" },
   { type: "crop-image" as NodeType, label: "Crop Image", description: "Trim to region", icon: "Crop", color: "#ef4444" },
   { type: "extract-frame" as NodeType, label: "Extract Frame", description: "Frame from video", icon: "Film", color: "#ec4899" },
   { type: "generate-image" as NodeType, label: "Generate Image", description: "Pollinations.ai / Flux", icon: "ImagePlus", color: "#f43f5e" },
-  { type: "video-enhance" as NodeType, label: "Video Enhance", description: "Upscale & sharpen video", icon: "Wand2", color: "#06b6d4" },
-  { type: "prompt-enhancer" as NodeType, label: "Enhance Prompt", description: "AI prompt engineering", icon: "Wand2", color: "#3b82f6" },
+  { type: "video-enhance" as NodeType, label: "Video Enhance", description: "Upscale & sharpen video", icon: "Clapperboard", color: "#06b6d4" },
+  { type: "prompt-enhancer" as NodeType, label: "Enhance Prompt", description: "AI prompt engineering", icon: "WandSparkles", color: "#3b82f6" },
 ];
+
+/** Hex colour per node type — used for node accents, minimap dots and dashboard previews. */
+export const NODE_COLORS: Record<NodeType, string> = Object.fromEntries(
+  SIDEBAR_NODES.map(n => [n.type, n.color])
+) as Record<NodeType, string>;
+
+/** Colour of the wire for each handle type, so edges read as "what flows through them". */
+export const HANDLE_COLORS: Record<HandleType, string> = { text: "#818cf8", image: "#34d399", video: "#fbbf24", any: "#8b8fa3" };

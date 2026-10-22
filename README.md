@@ -150,6 +150,15 @@ npm run dev:all
 
 Open [http://localhost:3000](http://localhost:3000). Or run them separately in two terminals with `npm run dev` and `npm run dev:trigger`.
 
+### Troubleshooting
+
+| Symptom | Cause & fix |
+|---|---|
+| Every page shows **"The database is over its plan limit"** | Neon rejects connections with *"exceeded the quota"* once a free project uses up its compute hours. Upgrade the plan, wait for the monthly reset, or point `DATABASE_URL` (in **both** `apps/web/.env` and `apps/worker/.env`) at another Postgres. |
+| LLM nodes with an image input fail with a model error | Groq retires model ids without notice. Check `GET https://api.groq.com/openai/v1/models` and update `GROQ_VISION_MODEL` / `GROQ_MODELS` in `packages/shared/src/types.ts`. |
+| Image generation is slow or says "one image every ~45 seconds" | Pollinations' free tier allows 1 image per 45s per IP. The worker waits out the limit once and the node shows a cooldown timer. |
+| "Generation timed out — is the Trigger.dev worker running?" | Start the worker: `npm run dev:all` (or `npm run dev:trigger`). |
+
 ---
 
 ## Deploying

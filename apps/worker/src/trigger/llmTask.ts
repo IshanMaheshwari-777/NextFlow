@@ -70,7 +70,8 @@ export const llmTask = task({
       });
       const apiTime = Date.now() - apiStart;
 
-      const text = response.choices?.[0]?.message?.content || "";
+      // Belt-and-braces: strip any reasoning block a model emits despite the params above.
+      const text = (response.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
       logger.info("LLM done", { nodeId, length: text.length, apiTimeMs: apiTime, model: finalModel });
       return { nodeId, success: true, text, model: finalModel, _timing: { apiMs: apiTime } };
     } catch (err) {

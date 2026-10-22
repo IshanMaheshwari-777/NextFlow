@@ -5,7 +5,10 @@ import { z } from "zod";
 
 const createWorkflowSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
+  /** Legacy flag — same as template: "marketing-kit". */
   sample: z.boolean().optional(),
+  template: z.enum(["prompt-to-image", "marketing-kit"]).optional(),
+  duplicateOf: z.string().min(1).max(64).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -47,17 +50,28 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   const body = parsed.data;
 
-  if (body.sample) {
-    const { SAMPLE_NODES, SAMPLE_EDGES } = await import("@/lib/sampleWorkflow");
+  const templateId = body.template ?? (body.sample ? "marketing-kit" : undefined);
+  if (templateId) {
+    const { TEMPLATES } = await import("@/lib/sampleWorkflow");
+    const t = TEMPLATES[templateId];
     const workflow = await withRetry(() => prisma.workflow.create({
       data: {
         userId: userId as string,
-        name: "Product Marketing Kit Generator",
+        name: body.name || t.name,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma's Json column type doesn't structurally match our node/edge shape
-        nodes: SAMPLE_NODES as any,
+        nodes: t.nodes as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        edges: SAMPLE_EDGES as any,
+        edges: t.edges as any,
       }
+    }));
+    return NextResponse.json(workflow, { status: 201 });
+  }
+
+  if (body.duplicateOf) {
+    const src = await withRetry(() => prisma.workflow.findFirst({ where: { id: body.duplicateOf, userId: userId as string } }));
+    if (!src) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+    const workflow = await withRetry(() => prisma.workflow.create({
+      data: { userId: userId as string, name: body.name || `${src.name} (copy)`.slice(0, 200), nodes: src.nodes ?? [], edges: src.edges ?? [] },
     }));
     return NextResponse.json(workflow, { status: 201 });
   }

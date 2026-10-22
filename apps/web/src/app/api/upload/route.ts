@@ -4,6 +4,9 @@ import { tasks } from "@trigger.dev/sdk/v3";
 
 export const dynamic = "force-dynamic";
 
+/** Tags the Trigger.dev run with its owner so the status route can refuse other users' runs. */
+function uploadOwnerTag(userId: string) { return `owner_${userId}`.slice(0, 128); }
+
 // Base64 is ~33% larger than the underlying binary; these caps land near 10MB / 50MB of real file data.
 const MAX_BASE64_LEN = { image: 14_000_000, video: 70_000_000 };
 
@@ -67,7 +70,7 @@ export async function POST(req: NextRequest) {
       fileData,
       fileName,
       mimeType: mimeType || (isVideo ? "video/mp4" : "image/jpeg"),
-    });
+    }, { tags: [uploadOwnerTag(userId)] });
     return NextResponse.json({ triggerRunId: handle.id }, { status: 202 });
   } catch (err) {
     console.error("[/api/upload] Failed to enqueue upload:", err instanceof Error ? err.message : err);

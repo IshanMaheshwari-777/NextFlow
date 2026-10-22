@@ -18,10 +18,13 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ trigge
 
   try {
     const r = await runs.retrieve(triggerRunId);
+    // Only the user who started an upload may read its result.
+    if (!r.tags?.includes(`owner_${userId}`.slice(0, 128))) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const error = (r as { error?: { message?: string } }).error?.message;
     return NextResponse.json({ status: r.status, output: r.output, error });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to check upload status";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if ((err as { status?: number })?.status === 404) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    console.error("[API/Upload/Status]", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Couldn't check the upload status." }, { status: 500 });
   }
 }

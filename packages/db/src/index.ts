@@ -5,7 +5,10 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefi
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Missing required environment variable: DATABASE_URL");
-  return url;
+  // Neon suspends idle computes and can take >5s (Prisma's default) to wake one up,
+  // which surfaces as a misleading P1001 "can't reach database". Give it room.
+  if (url.includes("connect_timeout=")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}connect_timeout=20`;
 }
 
 export const prisma =

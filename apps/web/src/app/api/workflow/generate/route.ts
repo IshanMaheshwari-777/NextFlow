@@ -46,8 +46,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { prompt } = await req.json();
-    if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+    if (!prompt) return NextResponse.json({ error: "Describe the workflow you want first." }, { status: 400 });
+    if (prompt.length > 1500) return NextResponse.json({ error: "Please keep the description under 1,500 characters." }, { status: 400 });
 
     const systemPrompt = `You are a workflow automation expert. Generate a JSON workflow for a React Flow application.
 
@@ -86,19 +88,24 @@ EXAMPLE: A workflow that enhances a prompt and generates an image:
 Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no explanation.`;
 
     const handle = await tasks.trigger("llm-node", {
+      nodeId: "workflow-generator",
       model: GROQ_DEFAULT_TEXT_MODEL,
       system_prompt: systemPrompt,
       user_message: `Generate a workflow for: ${prompt}`,
     });
 
-    const maxWait = 30000;
+    // Leave headroom under maxDuration (60s) — a cold Trigger.dev worker can take 10s+ to pick up.
+    const maxWait = 50000;
     const start = Date.now();
     while (Date.now() - start < maxWait) {
       const r = await runs.retrieve(handle.id);
       if (r.status === "COMPLETED") {
         let text = (r.output as { text?: string })?.text || "";
         // Clean markdown if present
-        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        text = text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
+        // Models sometimes wrap the JSON in a sentence — keep only the outermost object.
+        const first = text.indexOf("{"), last = text.lastIndexOf("}");
+        if (first >= 0 && last > first) text = text.slice(first, last + 1);
         try {
           const workflow: RawWorkflow = JSON.parse(text);
 
@@ -154,19 +161,18 @@ Return ONLY a JSON object with "nodes" and "edges" arrays. No markdown, no expla
           return NextResponse.json(workflow);
         } catch {
           console.error("Failed to parse AI workflow output:", text);
-          return NextResponse.json({ error: "AI generated invalid workflow format" }, { status: 500 });
+          return NextResponse.json({ error: "The AI returned something we couldn't read. Try rephrasing your description." }, { status: 502 });
         }
       }
-      if (["FAILED", "CANCELED", "CRASHED"].includes(r.status)) {
-        return NextResponse.json({ error: "Workflow generation failed" }, { status: 500 });
+      if (["FAILED", "CANCELED", "CRASHED", "SYSTEM_FAILURE", "TIMED_OUT", "EXPIRED"].includes(r.status)) {
+        return NextResponse.json({ error: "Workflow generation failed. Please try again." }, { status: 502 });
       }
       await new Promise(res => setTimeout(res, 1000));
     }
 
-    return NextResponse.json({ error: "Generation timed out" }, { status: 504 });
+    return NextResponse.json({ error: "Generation timed out — is the Trigger.dev worker running? (npm run dev:all)" }, { status: 504 });
   } catch (error) {
     console.error("[API/Workflow/Generate] Error:", error);
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't reach the AI service. Please try again." }, { status: 500 });
   }
 }

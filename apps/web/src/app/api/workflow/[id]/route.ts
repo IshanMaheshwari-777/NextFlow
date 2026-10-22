@@ -57,7 +57,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma's Json column type doesn't structurally match our node/edge shape
   const data = { ...(body.name && { name: body.name }), ...(body.nodes !== undefined && { nodes: body.nodes as any }), ...(body.edges !== undefined && { edges: body.edges as any }) };
-  await withRetry(() => prisma.workflow.updateMany({ where: { id, userId }, data }));
+  const { count } = await withRetry(() => prisma.workflow.updateMany({ where: { id, userId }, data }));
+  if (count === 0) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }
 
@@ -71,6 +72,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     console.error("[API/Workflow/ID DELETE] Clerk auth error:", error);
   }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await withRetry(() => prisma.workflow.deleteMany({ where: { id, userId } }));
+  const { count } = await withRetry(() => prisma.workflow.deleteMany({ where: { id, userId } }));
+  if (count === 0) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

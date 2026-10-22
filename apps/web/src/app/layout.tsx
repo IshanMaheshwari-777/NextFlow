@@ -4,7 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const title = "NextFlow — AI Workflow Builder";
@@ -67,7 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <head>
           <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         </head>
-        <body suppressHydrationWarning className={`${inter.className} antialiased`}>
+        <body suppressHydrationWarning className={`${inter.className} ${inter.variable} antialiased`}>
           {children}
         </body>
       </html>

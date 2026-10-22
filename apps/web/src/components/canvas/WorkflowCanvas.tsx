@@ -1,11 +1,11 @@
 "use client";
-import { useCallback, useRef, useState, useEffect } from "react";
-import { ReactFlow, Background, BackgroundVariant, MiniMap, type Connection, type ReactFlowInstance } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactFlow, Background, BackgroundVariant, MiniMap, useReactFlow, useViewport, useNodesInitialized, type Connection, type Edge, type IsValidConnection, type OnConnectEnd } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useWorkflowStore } from "@/store/workflowStore";
+import { useWorkflowStore, explainConnection } from "@/store/workflowStore";
 import { useShallow } from "zustand/react/shallow";
-import { NodeType, AppNode, AppEdge } from "@nextflow/shared/types";
-import { Plus, MousePointer2, Hand, Play, Trash2, Undo2 } from "lucide-react";
+import { NodeType, AppNode, AppEdge, NODE_COLORS } from "@nextflow/shared/types";
+import { Plus, MousePointer2, Hand, Play, Trash2, Copy, ZoomIn, ZoomOut, Maximize, Keyboard, Sparkles, LayoutTemplate } from "lucide-react";
 import TextNode from "@/components/nodes/TextNode";
 import UploadImageNode from "@/components/nodes/UploadImageNode";
 import UploadVideoNode from "@/components/nodes/UploadVideoNode";
@@ -15,164 +15,184 @@ import ExtractFrameNode from "@/components/nodes/ExtractFrameNode";
 import GenerateImageNode from "@/components/nodes/GenerateImageNode";
 import PromptEnhancerNode from "@/components/nodes/PromptEnhancerNode";
 import VideoEnhanceNode from "@/components/nodes/VideoEnhanceNode";
+import DeletableEdge from "./DeletableEdge";
+import { Modal } from "@/components/ui/Modal";
+import { toast } from "@/components/ui/toast";
 
 const nodeTypes = { text: TextNode, "upload-image": UploadImageNode, "upload-video": UploadVideoNode, llm: LLMNode, "crop-image": CropImageNode, "extract-frame": ExtractFrameNode, "generate-image": GenerateImageNode, "prompt-enhancer": PromptEnhancerNode, "video-enhance": VideoEnhanceNode };
-const defaultEdgeOptions = { type: "smoothstep", animated: true, style: { stroke: "var(--border-subtle)", strokeWidth: 2 } };
+const edgeTypes = { deletable: DeletableEdge };
+
+export const SHORTCUTS: [string, string][] = [
+  ["N", "Add a node"],
+  ["⌘ Enter", "Run workflow"],
+  ["⌘ Z / ⌘ ⇧ Z", "Undo / redo"],
+  ["⌘ D", "Duplicate selected node"],
+  ["⌘ S", "Save now"],
+  ["⌫ / Delete", "Delete selection"],
+  ["Shift + drag", "Box-select nodes"],
+  ["Space + drag", "Pan the canvas"],
+  ["Double-click name", "Rename a node"],
+];
 
 type CanvasMode = "select" | "pan";
+type Props = { onAddNode: (pos?: { x: number; y: number }) => void; onGenerate: () => void; onLoadTemplate: () => void };
 
-type Props = { onAddNode: () => void };
-
-export default function WorkflowCanvas({ onAddNode }: Props) {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, deleteNode, undo, redo, past, future } = useWorkflowStore(
-    useShallow(s => ({ nodes: s.nodes, edges: s.edges, onNodesChange: s.onNodesChange, onEdgesChange: s.onEdgesChange, onConnect: s.onConnect, addNode: s.addNode, deleteNode: s.deleteNode, undo: s.undo, redo: s.redo, past: s.past, future: s.future }))
+export default function WorkflowCanvas({ onAddNode, onGenerate, onLoadTemplate }: Props) {
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, deleteNode, duplicateNode, isRunning } = useWorkflowStore(
+    useShallow(s => ({ nodes: s.nodes, edges: s.edges, onNodesChange: s.onNodesChange, onEdgesChange: s.onEdgesChange, onConnect: s.onConnect, deleteNode: s.deleteNode, duplicateNode: s.duplicateNode, isRunning: s.isRunning }))
   );
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const rfRef = useRef<ReactFlowInstance<AppNode, AppEdge> | null>(null);
+  const rf = useReactFlow<AppNode, AppEdge>();
+  const { zoom } = useViewport();
+  const workflowId = useWorkflowStore(s => s.workflowId);
+  const nodesInitialized = useNodesInitialized();
+  const fittedFor = useRef<string | null>(null);
+
+  // The `fitView` prop only fires on first render, but nodes are loaded into the store after
+  // mount — so fit once per workflow as soon as React Flow has measured them.
+  useEffect(() => {
+    if (!workflowId || !nodesInitialized || fittedFor.current === workflowId || nodes.length === 0) return;
+    fittedFor.current = workflowId;
+    rf.fitView({ padding: 0.2, maxZoom: 1 });
+  }, [workflowId, nodesInitialized, nodes.length, rf]);
   const [ctxMenu, setCtxMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>("select");
-    const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  
   useEffect(() => {
-    const h = () => setCtxMenu(null);
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setCtxMenu(null); };
-    window.addEventListener("click", h);
-    window.addEventListener("keydown", esc);
-    return () => { window.removeEventListener("click", h); window.removeEventListener("keydown", esc); };
-  }, []);
+    const close = () => setCtxMenu(null);
+    const fit = () => setTimeout(() => rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 }), 50);
+    const shortcuts = () => setShowShortcuts(true);
+    // Select a node and glide the camera to it (used when a run is blocked by that node).
+    const focusNode = (e: Event) => {
+      const id = (e as CustomEvent).detail?.nodeId as string;
+      const n = rf.getNode(id);
+      if (!n) return;
+      useWorkflowStore.getState().onNodesChange(rf.getNodes().map(x => ({ type: "select" as const, id: x.id, selected: x.id === id })));
+      const m = (n as { measured?: { width?: number; height?: number } }).measured;
+      const w = m?.width ?? 288, h = m?.height ?? 200;
+      rf.setCenter(n.position.x + w / 2, n.position.y + h / 2, { zoom: Math.max(rf.getZoom(), 0.8), duration: 400 });
+    };
+    window.addEventListener("canvas-focus-node", focusNode);
+    window.addEventListener("click", close);
+    window.addEventListener("canvas-fit-view", fit);
+    window.addEventListener("open-shortcuts", shortcuts);
+    return () => { window.removeEventListener("click", close); window.removeEventListener("canvas-fit-view", fit); window.removeEventListener("open-shortcuts", shortcuts); window.removeEventListener("canvas-focus-node", focusNode); };
+  }, [rf]);
 
-  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: AppNode) => {
-    event.preventDefault();
-    setCtxMenu({ id: node.id, top: event.clientY, left: event.clientX });
-  }, []);
+  // Wires animate only while data is actually flowing into a running node.
+  const renderedEdges = useMemo(() => {
+    const running = new Set(nodes.filter(n => n.data.isRunning).map(n => n.id));
+    return edges.map(e => ({ ...e, type: "deletable", animated: running.has(e.target) }));
+  }, [edges, nodes]);
 
-  const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }, []);
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const type = e.dataTransfer.getData("application/nodeType") as NodeType;
-    if (!type || !rfRef.current) return;
-    const bounds = wrapperRef.current?.getBoundingClientRect();
-    if (!bounds) return;
-    const position = rfRef.current.screenToFlowPosition({ x: e.clientX - bounds.left, y: e.clientY - bounds.top });
-    addNode(type, position);
-  }, [addNode]);
+  // Live feedback while dragging a wire: incompatible handles turn red and refuse the drop.
+  const isValidConnection = useCallback<IsValidConnection<Edge>>((c) => explainConnection(nodes, edges, c) === null, [nodes, edges]);
 
-  const onDoubleClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest(".react-flow__node")) return;
-    onAddNode();
+  // A refused drop would otherwise just silently snap back — say why.
+  const onConnectEnd = useCallback<OnConnectEnd>((_, state) => {
+    if (state.isValid !== false || !state.fromHandle || !state.toHandle) return;
+    const from = state.fromHandle, to = state.toHandle;
+    const c = from.type === "source"
+      ? { source: from.nodeId, sourceHandle: from.id ?? null, target: to.nodeId, targetHandle: to.id ?? null }
+      : { source: to.nodeId, sourceHandle: to.id ?? null, target: from.nodeId, targetHandle: from.id ?? null };
+    const reason = explainConnection(nodes, edges, c);
+    if (reason) toast.warning(reason);
+  }, [nodes, edges]);
+
+  const handleConnect = useCallback((c: Connection) => {
+    const reason = onConnect(c);
+    if (reason) toast.warning(reason);
+  }, [onConnect]);
+
+  const onPaneDoubleClick = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".react-flow__node, .react-flow__edge, button, input, textarea")) return;
+    onAddNode({ x: e.clientX, y: e.clientY });
   }, [onAddNode]);
 
-  const dotColor = "var(--dot-color)";
+  const ctxNode = ctxMenu ? nodes.find(n => n.id === ctxMenu.id) : null;
 
   return (
-    <div ref={wrapperRef} style={{ width: "100%", height: "100%", position: "relative", background: "var(--canvas-bg)" }} onDragOver={onDragOver} onDrop={onDrop} onDoubleClick={onDoubleClick}>
-      {/* Empty state */}
+    <div ref={wrapperRef} className="canvas-wrap" onDoubleClick={onPaneDoubleClick}>
       {nodes.length === 0 && (
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 1, textAlign: "center" }}>
-          <p style={{ fontSize: 15, fontWeight: 400, color: "var(--text-muted)", margin: "0 0 6px" }}>Add a node</p>
-          <p style={{ fontSize: 13, color: "var(--border)", margin: 0 }}>Double click, right click, or press N</p>
+        <div className="canvas-empty">
+          <h2>Start building your workflow</h2>
+          <p>Chain AI models, images and video into a pipeline you can run with one click.</p>
+          <div className="canvas-empty-actions">
+            <button className="empty-card" onClick={() => onAddNode()}>
+              <span className="empty-card-icon"><Plus size={16} /></span>
+              <span className="empty-card-title">Add a node</span>
+              <span className="empty-card-sub">Press <kbd>N</kbd> or double-click the canvas</span>
+            </button>
+            <button className="empty-card" onClick={onGenerate}>
+              <span className="empty-card-icon"><Sparkles size={16} /></span>
+              <span className="empty-card-title">Describe it to AI</span>
+              <span className="empty-card-sub">“Enhance my prompt, then generate an image”</span>
+            </button>
+            <button className="empty-card" onClick={onLoadTemplate}>
+              <span className="empty-card-icon"><LayoutTemplate size={16} /></span>
+              <span className="empty-card-title">Use a template</span>
+              <span className="empty-card-sub">Product marketing kit — image, video &amp; copy</span>
+            </button>
+          </div>
         </div>
       )}
 
       <ReactFlow
-        nodes={nodes} edges={edges} nodeTypes={nodeTypes}
+        nodes={nodes} edges={renderedEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-        onConnect={(c: Connection) => onConnect(c)}
-        onNodeContextMenu={onNodeContextMenu}
-        onInit={i => { rfRef.current = i; }}
+        onConnect={handleConnect}
+        isValidConnection={isValidConnection}
+        onConnectEnd={onConnectEnd}
+        onNodeContextMenu={(e, node) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id: node.id, top: e.clientY, left: e.clientX }); }}
         deleteKeyCode={["Delete", "Backspace"]}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        fitView fitViewOptions={{ padding: 0.3, maxZoom: 0.8 }}
-        minZoom={0.1} maxZoom={3}
-        defaultEdgeOptions={defaultEdgeOptions}
-        panOnDrag={canvasMode === "pan"}
+        fitView fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
+        minZoom={0.15} maxZoom={2}
+        zoomOnDoubleClick={false}
+        panOnDrag={canvasMode === "pan" ? true : [1]}
+        panActivationKeyCode="Space"
         selectionOnDrag={canvasMode === "select"}
+        selectionKeyCode="Shift"
+        panOnScroll
         proOptions={{ hideAttribution: true }}
+        connectionLineStyle={{ stroke: "var(--text-muted)", strokeWidth: 2, strokeDasharray: "5 4" }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color={dotColor} />
-        <MiniMap
-          position="bottom-right"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, bottom: 20, right: 20 }}
-          maskColor="var(--border-subtle)"
-          nodeColor={() => "var(--text-muted)"}
-        />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="var(--dot-color)" />
+        <MiniMap position="bottom-right" pannable zoomable maskColor="var(--minimap-mask)" nodeColor={n => NODE_COLORS[n.type as NodeType] || "#71717a"} nodeBorderRadius={6} />
       </ReactFlow>
 
-      {/* Bottom center pill toolbar */}
-      <div style={{
-        position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)",
-        display: "flex", alignItems: "center", gap: 2,
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 999, padding: "4px 6px",
-        backdropFilter: "blur(12px)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-        zIndex: 10,
-      }}>
-        {[
-          { icon: <Plus size={16} />, label: "Add Node (N)", action: onAddNode, accent: true },
-          { icon: <MousePointer2 size={15} />, label: "Select mode", action: () => setCanvasMode("select"), active: canvasMode === "select" },
-          { icon: <Hand size={15} />, label: "Pan mode", action: () => setCanvasMode("pan"), active: canvasMode === "pan" },
-        ].map((btn, i) => (
-          <button key={i} onClick={btn.action} title={btn.label} style={{
-            width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            background: btn.active ? "var(--border)" : btn.accent ? "var(--text)" : "transparent",
-            border: "none", cursor: "pointer",
-            color: btn.active ? "var(--text)" : btn.accent ? "var(--bg)" : "var(--text-muted)",
-            transition: "all 100ms",
-          }}
-            onMouseEnter={e => { if (!btn.active) e.currentTarget.style.background = "var(--nav-hover)"; }}
-            onMouseLeave={e => { if (!btn.active && !btn.accent) e.currentTarget.style.background = "transparent"; if (!btn.active && btn.accent) e.currentTarget.style.background = "var(--nav-hover)"; }}
-          >
-            {btn.icon}
-          </button>
-        ))}
-      </div>
-
-      {/* Bottom left: undo/redo + shortcuts */}
-      <div style={{ position: "absolute", bottom: 20, left: 20, display: "flex", alignItems: "center", gap: 4, zIndex: 10 }}>
-        <button onClick={undo} disabled={past.length === 0} className="ghost-btn" title="Undo" style={{ width: 28, height: 28 }}><Undo2 size={14} /></button>
-        <button onClick={redo} disabled={future.length === 0} className="ghost-btn" title="Redo" style={{ width: 28, height: 28 }}><Undo2 size={14} style={{ transform: "scaleX(-1)" }} /></button>
-        <button onClick={() => setShowShortcuts(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-muted)", padding: "4px 8px", transition: "color 100ms" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
-          onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-        >Keyboard shortcuts</button>
+      {/* Bottom toolbar */}
+      <div className="canvas-toolbar" onDoubleClick={e => e.stopPropagation()}>
+        <button className="toolbar-btn toolbar-btn-primary" onClick={() => onAddNode()} title="Add node (N)" aria-label="Add node"><Plus size={16} /></button>
+        <div className="toolbar-sep" />
+        <button className={`toolbar-btn ${canvasMode === "select" ? "is-active" : ""}`} onClick={() => setCanvasMode("select")} title="Select — drag to box-select" aria-pressed={canvasMode === "select"}><MousePointer2 size={15} /></button>
+        <button className={`toolbar-btn ${canvasMode === "pan" ? "is-active" : ""}`} onClick={() => setCanvasMode("pan")} title="Pan — drag to move the canvas (or hold Space)" aria-pressed={canvasMode === "pan"}><Hand size={15} /></button>
+        <div className="toolbar-sep" />
+        <button className="toolbar-btn" onClick={() => rf.zoomOut({ duration: 150 })} title="Zoom out" aria-label="Zoom out"><ZoomOut size={15} /></button>
+        <button className="toolbar-zoom" onClick={() => rf.zoomTo(1, { duration: 150 })} title="Reset to 100%">{Math.round(zoom * 100)}%</button>
+        <button className="toolbar-btn" onClick={() => rf.zoomIn({ duration: 150 })} title="Zoom in" aria-label="Zoom in"><ZoomIn size={15} /></button>
+        <button className="toolbar-btn" onClick={() => rf.fitView({ padding: 0.2, duration: 300, maxZoom: 1 })} title="Fit to screen" aria-label="Fit to screen"><Maximize size={14} /></button>
+        <div className="toolbar-sep" />
+        <button className="toolbar-btn" onClick={() => setShowShortcuts(true)} title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><Keyboard size={15} /></button>
       </div>
 
       {/* Node context menu */}
-      {ctxMenu && (
-        <div style={{ position: "fixed", top: ctxMenu.top, left: ctxMenu.left, zIndex: 9999, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: 4, minWidth: 150 }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => { window.dispatchEvent(new CustomEvent("run-single-node", { detail: { nodeId: ctxMenu.id } })); setCtxMenu(null); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13, background: "transparent", color: "var(--text)", border: "none", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-hover)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-          >
-            <Play style={{ width: 14, height: 14 }} /> Run this node
-          </button>
-          <button onClick={() => { deleteNode(ctxMenu.id); setCtxMenu(null); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13, background: "transparent", color: "#f87171", border: "none", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(248,113,113,0.1)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-          >
-            <Trash2 style={{ width: 14, height: 14 }} /> Delete node
-          </button>
+      {ctxMenu && ctxNode && (
+        <div className="menu" style={{ position: "fixed", top: Math.min(ctxMenu.top, window.innerHeight - 140), left: Math.min(ctxMenu.left, window.innerWidth - 190), zIndex: 1000 }} onClick={e => e.stopPropagation()} role="menu">
+          <button role="menuitem" className="menu-item" disabled={isRunning} onClick={() => { window.dispatchEvent(new CustomEvent("run-single-node", { detail: { nodeId: ctxMenu.id } })); setCtxMenu(null); }}><Play size={13} /> Run this node</button>
+          <button role="menuitem" className="menu-item" onClick={() => { duplicateNode(ctxMenu.id); setCtxMenu(null); }}><Copy size={13} /> Duplicate <kbd className="menu-kbd">⌘D</kbd></button>
+          <div className="menu-sep" />
+          <button role="menuitem" className="menu-item menu-item-danger" onClick={() => { deleteNode(ctxMenu.id); setCtxMenu(null); }}><Trash2 size={13} /> Delete <kbd className="menu-kbd">⌫</kbd></button>
         </div>
       )}
 
-      {/* Shortcuts modal */}
-      {showShortcuts && (
-        <div role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowShortcuts(false)}>
-          <div style={{ width: 380, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 24px 48px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
-            <h3 id="shortcuts-title" style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Keyboard Shortcuts</h3>
-            {[["N", "Open node picker"],["⌘ Enter", "Run full workflow"],["⌘ Z", "Undo"],["⌘ ⇧ Z", "Redo"],["Delete / ⌫", "Delete selected node"],["Esc", "Close panels"]].map(([key, desc]) => (
-              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{desc}</span>
-                <kbd style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: "var(--surface-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontFamily: "monospace" }}>{key}</kbd>
-              </div>
-            ))}
-            <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: 10, borderRadius: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text)", fontSize: 13, cursor: "pointer" }}>Close</button>
-          </div>
+      <Modal open={showShortcuts} onClose={() => setShowShortcuts(false)} title="Keyboard shortcuts" width={420}>
+        <div className="modal-body">
+          {SHORTCUTS.map(([key, desc]) => (
+            <div key={key} className="shortcut-row"><span>{desc}</span><kbd>{key}</kbd></div>
+          ))}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
