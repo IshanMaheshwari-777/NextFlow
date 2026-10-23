@@ -11,6 +11,7 @@
     "dev:trigger": "npm run dev --workspace=apps/worker",
     "dev:all": "concurrently -n db,shared,web,trigger -c gray,gray,blue,magenta \"npm run dev --workspace=packages/db\" \"npm run dev --workspace=packages/shared\" \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=apps/worker\"",
     "test": "npm run test --workspace=packages/shared",
+    "db:push": "prisma db push --schema packages/db/prisma/schema.prisma --skip-generate",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run build --workspace=packages/db && npm run build --workspace=packages/shared && npm run typecheck --workspace=apps/web && npm run typecheck --workspace=apps/worker"
   },
@@ -21,5 +22,9 @@
     "@clerk/shared": "4.8.3",
     "@clerk/backend": "3.3.0",
     "@clerk/react": "6.4.3"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.3",
+    "@neon/env": "^1.6.4"
   }
 }

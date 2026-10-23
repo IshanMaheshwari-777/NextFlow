@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export type DbOutage = "quota" | "unreachable" | "misconfigured";
+export type DbOutage = "quota" | "unreachable" | "misconfigured" | "schema";
 
 /**
  * Recognises "the database itself is unavailable" failures (as opposed to bugs), so pages
@@ -13,6 +13,8 @@ export function classifyDbError(err: unknown): DbOutage | null {
   const msg = (e?.message ?? "").toLowerCase();
   const code = e?.code ?? e?.errorCode ?? "";
   if (msg.includes("exceeded the quota") || msg.includes("compute time quota") || msg.includes("data transfer quota")) return "quota";
+  // Fresh/empty database: tables were never created (P2021 table missing, P2022 column missing).
+  if (code === "P2021" || code === "P2022" || (msg.includes("does not exist") && msg.includes("table"))) return "schema";
   if (msg.includes("missing required environment variable: database_url") || code === "P1012" || code === "P1013") return "misconfigured";
   if (
     ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(code) ||

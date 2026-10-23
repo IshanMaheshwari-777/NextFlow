@@ -133,12 +133,14 @@ cp apps/worker/.env.example apps/worker/.env
 
 ### 3. Database Setup
 
-Prisma lives in `packages/db`; `npm install` at the root already ran `prisma generate` via its `postinstall`. Push the schema:
+Prisma lives in `packages/db`; `npm install` at the root already ran `prisma generate` via its `postinstall`. A new database has no tables until you push the schema — run this once per database (new Neon project, new branch, reset):
 
 ```bash
-npm run build --workspace=packages/db
-npx prisma db push --schema packages/db/prisma/schema.prisma
+# Use Neon's *direct* connection string (host without "-pooler") for schema changes
+DATABASE_URL="<direct connection string>" npm run db:push
 ```
+
+The apps themselves should use the **pooled** connection string (host contains `-pooler`) as `DATABASE_URL`. With the Neon CLI linked (`neon.ts` / `.neon`), `npx neon@latest env pull` writes both as `DATABASE_URL` and `DATABASE_URL_UNPOOLED` into `.env.local`.
 
 ### 4. Run Development Server
 

@@ -56,3 +56,4 @@ prisma/migrations/
 
 # Antigravity / Gemini
 .gemini/
+.neon

@@ -159,12 +159,18 @@ async function executeNode(node: AppNode, inputs: Record<string, any>, workflowR
         }
       };
 
+      // Keep honouring Retry-After (it can come back as "1s" right after a long wait) within
+      // a ~2-minute budget; transient errors get one plain retry.
       let attempt = await tryGenerate(finalPrompt);
-      if ("retryAfter" in attempt && attempt.retryAfter <= 50) {
-        logger.info("Pollinations rate-limited, waiting before retry", { retryAfter: attempt.retryAfter });
-        await new Promise(r => setTimeout(r, (attempt as { retryAfter: number }).retryAfter * 1000 + 1000));
-        attempt = await tryGenerate(finalPrompt);
-      } else if ("error" in attempt) {
+      let waited = 0, plainRetries = 0;
+      while (true) {
+        if ("retryAfter" in attempt && attempt.retryAfter <= 50 && waited + attempt.retryAfter <= 120) {
+          logger.info("Pollinations rate-limited, waiting before retry", { retryAfter: attempt.retryAfter, waited });
+          await new Promise(r => setTimeout(r, (attempt as { retryAfter: number }).retryAfter * 1000 + 1500));
+          waited += (attempt as { retryAfter: number }).retryAfter + 1.5;
+        } else if ("error" in attempt && plainRetries < 1) {
+          plainRetries++;
+        } else break;
         attempt = await tryGenerate(finalPrompt);
       }
       if ("retryAfter" in attempt) throw new Error(`The free image service allows one image every ~45 seconds. Try again in ${attempt.retryAfter}s.`);

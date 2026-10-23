@@ -6,6 +6,7 @@ const DEV_HINT: Record<DbOutage, string> = {
   quota: "Postgres provider rejected the connection: project quota exceeded. Upgrade the Neon plan, wait for the monthly reset, or point DATABASE_URL at another database.",
   unreachable: "Couldn't connect to Postgres. Check DATABASE_URL and that the database is running (Neon computes can take a few seconds to wake).",
   misconfigured: "DATABASE_URL is missing or invalid in this environment.",
+  schema: "The database is reachable but its tables don't exist yet (new or reset database). Run `npm run db:push` with DATABASE_URL pointing at it.",
 };
 
 /** Shown instead of a crash when the database is down — users learn their work is safe and what to do. */
